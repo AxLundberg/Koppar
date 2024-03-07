@@ -33,6 +33,7 @@ private:
 	void RenderPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transform2);
 	void DuFresne();
 	void ImguiWindows();
+	void BallControl();
 private:
 	//heightmap variables
 	float divX = 499.0f;
@@ -55,12 +56,14 @@ private:
 	std::vector<std::unique_ptr<class Particle>> mParticles = {};
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
+	std::unique_ptr<Vector> mBall = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
+
 	std::unique_ptr<Sheet> mRTSheet = std::make_unique<Sheet>(window.Gfx(), L"fullscreenVS.cso", L"fullscreenPS.cso" );
 	std::unique_ptr<Sheet> mDSSheet = std::make_unique<Sheet>(window.Gfx(), L"depthVS.cso", L"depthPS.cso" );
-	std::unique_ptr<Model> cottage = std::make_unique<Model>(window.Gfx(), L"cottage2_obj", false, 1.0f );
+	//std::unique_ptr<Model> cottage = std::make_unique<Model>(window.Gfx(), L"cottage2_obj", false, 1.0f );
 	std::unique_ptr<ModelAi> skelleBoi = std::make_unique<ModelAi>(window.Gfx(), "Boblampclean", false, 0.1f);
 	std::unique_ptr<ModelAi> skelleBoi2 = std::make_unique<ModelAi>(window.Gfx(), "Boblampclean", false, 0.1f );
-	std::unique_ptr<Model> mBox = std::make_unique<Model>(window.Gfx(), L"Crate1", false, 0.5f );
+	//std::unique_ptr<Model> mBox = std::make_unique<Model>(window.Gfx(), L"Crate1", false, 0.5f );
 	std::unique_ptr<Terrain> mTerrain = std::make_unique<Terrain>( window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f },
 		mReach, heightAttenuation, divX, divZ,  width, height, heightmap);
 
@@ -79,12 +82,12 @@ private:
 		UINT nParticles{256};
 		std::wstring texture = L"Textures\\gradiente.jpg";
 	}pSys;
-	std::unique_ptr<Particle> mParticle = std::make_unique<Particle>(window.Gfx(),
+	/*std::unique_ptr<Particle> mParticle = std::make_unique<Particle>(window.Gfx(),
 					pSys.emitter, pSys.particleInitDir,
 					pSys.dirVarianceAlpha, pSys.dirVarianceBeta,
 					pSys.size, pSys.initVelocity, pSys.velocity,
 					pSys.particleLifetime, pSys.nParticles,
-					pSys.texture );
+					pSys.texture );*/
 	//Mbase boi{ window.Gfx(), "boy", false, 1.0f };
 	//Model hand{ window.Gfx(), L"rigged_hand_obj", false, 50.0f };
 	//Model planeRH{ window.Gfx(), L"testPlaneRH", true, 10.0f };
@@ -118,14 +121,14 @@ private:
 	bool drawBoxes = false;
 	bool drawNormMaps = false;
 	bool drawPticle = false;
-	bool drawSkelleboi = true;
+	bool drawSkelleboi = false;
 	bool drawCottage = false;
-	bool drawTerrain = true;
-	bool drawAxes = false;
+	bool drawTerrain = false;
+	bool drawAxes = true;
 	bool drawTest = false;
 	bool drawTestbox = false;
 	//imgui misc variables
-	bool drawDSScreen = true;
+	bool drawDSScreen = false;
 	bool drawDSTexture = false;
 	bool shadowPass = true;
 	bool renderPass = true;

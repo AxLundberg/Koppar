@@ -148,9 +148,68 @@ Logic::Logic()
 	//frustrum.AddDrawables(std::move(std::make_unique<PortalWall>(window.Gfx(),
 	//	XMFLOAT3{ -0.01f, 10.0f, 10.0f }, XMFLOAT3{ 0.0f, PI/2, 0.0f }, 20.0f, 20.0f, 10.0f, 10.0f, L"crystal")));
 
-	frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(12.0f, 12.0f, 12.0f))));
-	frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, 12.0f))));
-	frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, -12.0f))));
+	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(12.0f, 12.0f, 12.0f))));
+	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, 12.0f))));
+	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, -12.0f))));
+}
+
+void Logic::BallControl()
+{
+	ImGui::End();
+
+	if (ImGui::Begin("GolfBall"))
+	{
+		using namespace DirectX;
+		using namespace std::string_literals;
+
+		static float ballX = 0.f, ballY = 0.f, ballZ = 0.f;
+		ImGui::Text("BallPos");
+		ImGui::SliderFloat("ballX", &ballX, -180.0f, 180.0f);
+		ImGui::SliderFloat("ballY", &ballY, -180.0f, 180.0f);
+		ImGui::SliderFloat("ballZ", &ballZ, -180.0f, 180.0f);
+
+		XMVECTOR ballPosition = DirectX::XMVectorSet(ballX, ballY, ballZ, 0.0f);
+		if (ImGui::Button("SpawnBall"))
+		{
+			mBall.get()->SetPosition(ballPosition);
+		}
+
+		static float goalX = 10.f, goalY = 0.f, goalZ = 10.f;
+		ImGui::Text("GoalPos");
+		ImGui::SliderFloat("goalX", &goalX, -180.0f, 180.0f);
+		ImGui::SliderFloat("goalY", &goalY, -180.0f, 180.0f);
+		ImGui::SliderFloat("goalZ", &goalZ, -180.0f, 180.0f);
+
+		auto goalPosition = XMVectorSet(goalX, goalY, goalZ, 0.0f);
+		if (ImGui::Button("SetGoal"))
+		{
+			DirectX::XMVECTOR target = DirectX::XMVectorSet(goalX, goalY, goalZ, 0.0f);
+			DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
+			direction = DirectX::XMVector3Normalize(direction);
+			mBall.get()->SetDirection(direction);
+		}
+
+		static float aimXZ = 0.f, aimY = 0.f;
+		static float distance;
+		{
+			XMVECTOR difference = XMVectorSubtract(ballPosition, goalPosition);
+			XMVECTOR distanceSquared = XMVector3LengthSq(difference);
+			return sqrtf(XMVectorGetX(distanceSquared)); // Taking the square 
+		} 
+		ImGui::Text("Aim");
+		ImGui::SliderFloat("angleXZ", &aimXZ, -180.0f, 180.0f);
+		ImGui::SliderFloat("aimY", &aimY, -180.0f, 180.0f);
+
+
+
+		DirectX::XMVECTOR target = DirectX::XMVectorSet(goalX, goalY, goalZ, 0.0f);
+		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
+		direction = DirectX::XMVector3Normalize(direction);
+		mBall.get()->SetDirection(direction);
+
+		/*auto lightPos = light.GetPosition();
+		DirectX::XMVECTOR target = DirectX::XMLoadFloat3(&lightPos);*/
+	}
 }
 
 void Logic::DuFresne()
@@ -201,6 +260,7 @@ void Logic::DuFresne()
 		{
 			drawables[i].get()->Draw(window.Gfx());
 		}
+
 	}
 	if (revolve)
 	{
@@ -224,10 +284,22 @@ void Logic::DuFresne()
 		fc.BindFilter(window.Gfx());
 		mRTSheet.get()->Draw(window.Gfx());
 	}
+	{
+		DirectX::XMVECTOR position = DirectX::XMVectorSet(1, 1, 1, 1); // (0, 10, 0)
+		DirectX::XMVECTOR direction = DirectX::XMVectorSet(1, 1, 1, 0); // (1, 0, 0)
+		DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0); // (1, 1, 1)
+		//mBall.get()->SetPosition(position);
+		//mBall.get()->SetDirection(direction);
+		mBall.get()->SetScale(scale);
+
+		mBall.get()->Draw(window.Gfx());
+	}
+	
 
 	light.SpawnControlWindow();
 	mCameras.SpawnControlWindow();
 	skelleBoi->SpawnControlWindow();
+	BallControl();
 	ImguiWindows();
 
 	Control();
@@ -271,67 +343,10 @@ void Logic::RenderPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transfor
 	}
 	if (drawBoxes)
 	{
-		auto drawBox = [&](size_t i) {
-			//q1<->q2
-			if(!frustrum.CullObject(XMVectorSet(0.0f, 4.5f, 4.5f+i, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f, 4.5f+i));
-			if (!frustrum.CullObject(XMVectorSet(0.0f, 15.5f, 4.5f+i, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(0.0f, 15.5f, 4.5f+i));
-			if (!frustrum.CullObject(XMVectorSet(0.0f, 4.5f+i, 4.5f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f+i, 4.5f));
-			if (!frustrum.CullObject(XMVectorSet(0.0f, 4.5f+i, 15.5f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f+i, 15.5f));
-			//q2<->q3
-			if (!frustrum.CullObject(XMVectorSet(-4.5f-i, 4.5f, 0.0f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-4.5f-i, 4.5f, 0.0f));
-			if (!frustrum.CullObject(XMVectorSet(-4.5f-i, 15.5f, 0.0f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-4.5f-i, 15.5f, 0.0f));
-			if (!frustrum.CullObject(XMVectorSet(-4.5f, 4.5f+i, 0.0f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-4.5f, 4.5f+i, 0.0f));
-			if (!frustrum.CullObject(XMVectorSet(-15.5f, 4.5f+i, 0.0f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-15.5f, 4.5f+i, 0.0f));
-			//q2<->(-q2)
-			if (!frustrum.CullObject(XMVectorSet(-14.5f-i, 0.0f, 14.5f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-14.5f-i, 0.0f, 14.5f));
-			if (!frustrum.CullObject(XMVectorSet(-14.5f-i, 0.0f, 25.5f, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-14.5f-i, 0.0f, 25.5f));
-			if (!frustrum.CullObject(XMVectorSet(-14.5f, 0.0f, 14.5f+i, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-14.5f, 0.0f, 14.5f+i));
-			if (!frustrum.CullObject(XMVectorSet(-25.5f, 0.0f, 14.5f+i, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-25.5f, 0.0f, 14.5f+i));
-		};
-
-		for (size_t i = 0; i < 12; i++) {
-			drawBox(i);
-		}
-
-		auto drawCullBox = [&](size_t& i, size_t& j, size_t& k) {
-
-			auto x = i * 8.0f, y = j * 8.0f, z = k * 8.0f;
-			if (!frustrum.CullObject(XMVectorSet(x, y, z, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(x, y, z));
-			if (!frustrum.CullObject(XMVectorSet(x, y, -z, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(x, y, -z));
-			if (!frustrum.CullObject(XMVectorSet(-x, y, z, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-x, y, z));
-			if (!frustrum.CullObject(XMVectorSet(-x, -y, z, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-x, -y, z));
-			if (!frustrum.CullObject(XMVectorSet(-x, y, -z, 1.0f), 0.5f))
-				mBox.get()->Draw(window.Gfx(), XMMatrixTranslation(-x, y, -z));
-		};
-
-		for (size_t i = 1; i < 3; i++) {
-			for (size_t j = 1; j < 3; j++) {
-				for (size_t k = 1; k < 3; k++)
-				{
-					drawCullBox(i, j, k);
-				}
-			}
-		}
 	}
 	if (drawCottage)
 	{
-		cottage.get()->Draw(window.Gfx(), transform2);
+		//cottage.get()->Draw(window.Gfx(), transform2);
 	}
 	if (drawTerrain)
 	{
@@ -340,8 +355,8 @@ void Logic::RenderPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transfor
 	}
 	if (drawPticle)
 	{
-		mParticle.get()->Update(0.0f, light.GetPosition());
-		mParticle.get()->DrawInstanced(window.Gfx());
+		//mParticle.get()->Update(0.0f, light.GetPosition());
+		//mParticle.get()->DrawInstanced(window.Gfx());
 		window.Gfx().GetContext()->GSSetShader(nullptr, nullptr, 0);
 	}
 	if (drawNormMaps)
@@ -372,20 +387,20 @@ void Logic::ShadowPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transfor
 	{
 		auto drawBox = [&](size_t i) {
 			//q1<->q2
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f, 4.5f+i));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 15.5f, 4.5f+i));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f+i, 4.5f));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f+i, 15.5f));
-			//q2<->q3
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-4.5f-i, 4.5f, 0.0f));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-4.5f-i, 15.5f, 0.0f));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-4.5f, 4.5f+i, 0.0f));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-15.5f, 4.5f+i, 0.0f));
-			//q2<->(-q2)
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-14.5f-i, 0.0f, 14.5f));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-14.5f-i, 0.0f, 25.5f));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-14.5f, 0.0f, 14.5f+i));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-25.5f, 0.0f, 14.5f+i));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f, 4.5f+i));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 15.5f, 4.5f+i));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f+i, 4.5f));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(0.0f, 4.5f+i, 15.5f));
+			////q2<->q3
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-4.5f-i, 4.5f, 0.0f));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-4.5f-i, 15.5f, 0.0f));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-4.5f, 4.5f+i, 0.0f));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-15.5f, 4.5f+i, 0.0f));
+			////q2<->(-q2)
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-14.5f-i, 0.0f, 14.5f));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-14.5f-i, 0.0f, 25.5f));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-14.5f, 0.0f, 14.5f+i));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-25.5f, 0.0f, 14.5f+i));
 		};
 
 		for (size_t i = 0; i < 12; i++){
@@ -395,11 +410,11 @@ void Logic::ShadowPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transfor
 		auto drawQuadrantBoxes = [&](size_t& i, size_t& j, size_t& k) {
 
 			auto x = i * 8.0f, y = j * 8.0f, z = k * 8.0f;
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(x, y, z));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(x, y, -z));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-x, y, z));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-x, -y, z));
-			mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-x, y, -z));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(x, y, z));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(x, y, -z));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-x, y, z));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-x, -y, z));
+			//mBox.get()->DrawEffects(window.Gfx(), XMMatrixTranslation(-x, y, -z));
 		};
 
 		for (size_t i = 1; i <= 2; i++){
@@ -413,7 +428,7 @@ void Logic::ShadowPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transfor
 	}
 	if (drawCottage)
 	{
-		cottage.get()->DrawEffects(window.Gfx(), transform2);
+		//cottage.get()->DrawEffects(window.Gfx(), transform2);
 	}
 	if (drawSkelleboi)
 	{
@@ -433,12 +448,6 @@ void Logic::ShadowPass(DirectX::FXMMATRIX transform, DirectX::FXMMATRIX transfor
 		{
 			mPortals[i]->DrawEffects(window.Gfx(), true, false, false);
 		}
-	}
-	if (drawPticle && shdwptcle)
-	{
-		mParticle.get()->Update(0.0f, light.GetPosition());
-		mParticle.get()->DrawInstanced(window.Gfx());
-		window.Gfx().GetContext()->GSSetShader(nullptr, nullptr, 0);
 	}
 	fc.ShadowPassEnd(window.Gfx());
 	window.Gfx().SetCamera(mCameras.GetCamera().GetMatrix());

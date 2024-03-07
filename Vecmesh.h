@@ -41,7 +41,7 @@ public:
 		namespace dx = DirectX;
 
 	}
-			std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> GetBoundingBox() const noexcept override
+	std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> GetBoundingBox() const noexcept override
 	{
 		return {};
 	}
