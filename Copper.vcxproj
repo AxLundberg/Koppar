@@ -146,6 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Ball.h" />
     <ClInclude Include="CameraContainer.h" />
     <ClInclude Include="CBufferBoneTransform.h" />
     <ClInclude Include="CbufferCameraTransform.h" />
@@ -225,6 +226,7 @@
     <ClInclude Include="Winhead.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Ball.cpp" />
     <ClCompile Include="Bindable.cpp" />
     <ClCompile Include="Box.cpp" />
     <ClCompile Include="Camera.cpp" />

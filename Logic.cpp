@@ -216,7 +216,7 @@ void Logic::BallControl()
 			float normZ = goalZ - ballZ;
 			float distBallToGoal = sqrtf((normX * normX) + (normZ * normZ));
 			if (normZ == 0.f) // Division with zero guard
-				normZ == 0.01f;
+				normZ = 0.01f;
 			float angleA = atan2f(normZ, normX);
 			float angleB = deg_rad(aimXZ);
 			float newX = cosf(angleA + angleB) * distBallToGoal;
@@ -283,6 +283,9 @@ void Logic::DuFresne()
 		{
 			drawables[i].get()->Draw(window.Gfx());
 		}
+		mTest->SetPosition(DirectX::XMFLOAT3{10.f, 10.f, 10.f});
+		mTest2->Draw(window.Gfx());
+		mTest->Draw(window.Gfx());
 		mGoal->Draw(window.Gfx());
 	}
 	if (revolve)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Box.h"
+#include "Ball.h"
 #include "Melon.h"
 #include "Sheet.h"
 #include "Terrain.h"
