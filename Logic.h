@@ -57,6 +57,11 @@ private:
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
 	std::unique_ptr<Vector> mBall = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
+	std::unique_ptr<Cylinder> mGoal = std::make_unique<Cylinder>(
+		window.Gfx(), 11.5f, 1.0f, 0.0f,
+		PI / 2, 0.f, 0.0f,
+		5.0f, 5.0f, 5.0f, DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+	);
 
 	std::unique_ptr<Sheet> mRTSheet = std::make_unique<Sheet>(window.Gfx(), L"fullscreenVS.cso", L"fullscreenPS.cso" );
 	std::unique_ptr<Sheet> mDSSheet = std::make_unique<Sheet>(window.Gfx(), L"depthVS.cso", L"depthPS.cso" );

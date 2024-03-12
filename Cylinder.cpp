@@ -84,6 +84,9 @@ void Cylinder::Update(float dt, DirectX::XMFLOAT3 pos) noexcept
 	theta += dtheta * dt;
 	phi += dphi * dt;
 	chi += dchi * dt;
+	move.x = pos.x;
+	move.y = pos.y;
+	move.z = pos.z;
 }
 
 std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> Cylinder::GetBoundingBox() const noexcept

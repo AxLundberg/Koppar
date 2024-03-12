@@ -76,29 +76,21 @@ public:
 		XMVECTOR position = XMLoadFloat3(&mPosition);
 		XMVECTOR normalizedDir = XMVector3Normalize(XMLoadFloat3(&mDirection));
 
-		// Calculate right and up vectors based on the direction vector
-		XMVECTOR right = XMVector3Cross(g_XMIdentityR1, normalizedDir);
-		XMVECTOR up = XMVector3Cross(normalizedDir, right);
-
 		// Create the rotation part of the matrix
-		XMMATRIX rotationMatrix = XMMATRIX(
-			right,
-			up,
-			normalizedDir,
-			DirectX::g_XMIdentityR3
-		);
-
-
+		XMVECTOR up = XMVectorSet(.0f, 1.0f, 0.0f, 0.0f);
+		XMVECTOR rotationQuaternion = DirectX::XMQuaternionRotationMatrix(DirectX::XMMatrixLookToLH(DirectX::g_XMZero, normalizedDir, up));
+		XMMATRIX rotationMatrix = XMMatrixTranspose(XMMatrixRotationQuaternion(rotationQuaternion));
+		
 		// Create the scaling part of the matrix
-		DirectX::XMMATRIX scalingMatrix = DirectX::XMMatrixScalingFromVector(scale);
+		XMMATRIX scalingMatrix = XMMatrixScalingFromVector(scale);
 
 		for (size_t i = 0; i < power; i++)
 		{
-			DirectX::XMVECTOR translation = DirectX::XMVectorScale(normalizedDir, static_cast<float>(i) * 3.0f); // Calculate translation vector
-			DirectX::XMVECTOR newPosition = DirectX::XMVectorAdd(position, translation);
-			DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(newPosition);
-
-			DirectX::XMMATRIX tf = scalingMatrix * rotationMatrix * translationMatrix;
+			XMVECTOR translation = XMVectorScale(normalizedDir, static_cast<float>(i) * 3.0f); // Calculate translation vector
+			XMVECTOR newPosition = XMVectorAdd(position, translation);
+			XMMATRIX translationMatrix = XMMatrixTranslationFromVector(newPosition);
+			
+			XMMATRIX tf = scalingMatrix * rotationMatrix * translationMatrix;
 			meshPtrs[i]->Draw(gfx, tf);
 		}
 	}

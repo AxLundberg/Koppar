@@ -187,23 +187,45 @@ void Logic::BallControl()
 			DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
 			direction = DirectX::XMVector3Normalize(direction);
 			mBall.get()->SetDirection(direction);
+			mGoal->Update(0.f, XMFLOAT3{ goalX, goalY, goalZ });
+
 		}
 
-		static float aimXZ = 0.f, aimY = 0.f;
-		static float distance;
-		{
-			XMVECTOR difference = XMVectorSubtract(ballPosition, goalPosition);
-			XMVECTOR distanceSquared = XMVector3LengthSq(difference);
-			return sqrtf(XMVectorGetX(distanceSquared)); // Taking the square 
-		} 
+		static float aimXZ = 35.26f, aimY = 0.f;
+		static float radius = 1000.f;
 		ImGui::Text("Aim");
 		ImGui::SliderFloat("angleXZ", &aimXZ, -180.0f, 180.0f);
 		ImGui::SliderFloat("aimY", &aimY, -180.0f, 180.0f);
 
 
+		// calculate distance between ball and goal
+		static float distance;
+		{
+			XMVECTOR difference = XMVectorSubtract(ballPosition, goalPosition);
+			XMVECTOR distanceSquared = XMVector3LengthSq(difference);
+			distance = sqrtf(XMVectorGetX(distanceSquared));
+		} 
+		
+		// calculate grounded angle
+		{
+			float normX = goalX - ballX;
+			float normZ = goalZ - ballZ;
+			float distBallToGoal = sqrtf((normX * normX) + (normZ * normZ)); //
+			float angleA = atanf(normZ / normX); //
+			float angleB = deg_rad(aimXZ);
+			float newX = cosf(angleA + angleB) * distBallToGoal;
+			float newZ = sinf(angleA + angleB) * distBallToGoal;
+			float newAimX = ballX + newX;
+			float newAimZ = ballZ + newZ;
+
+			auto t = 0;
+		}
+
 
 		DirectX::XMVECTOR target = DirectX::XMVectorSet(goalX, goalY, goalZ, 0.0f);
-		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
+		auto lightPos = light.GetPosition();
+		auto tgt = XMLoadFloat3(&lightPos);
+		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(tgt, ballPosition);
 		direction = DirectX::XMVector3Normalize(direction);
 		mBall.get()->SetDirection(direction);
 
@@ -246,6 +268,7 @@ void Logic::DuFresne()
 
 	fc.BeginFrame(window.Gfx());
 
+
 	if (shadowPass)
 	{
 		ShadowPass(transform, transform2);
@@ -260,7 +283,7 @@ void Logic::DuFresne()
 		{
 			drawables[i].get()->Draw(window.Gfx());
 		}
-
+		mGoal->Draw(window.Gfx());
 	}
 	if (revolve)
 	{
