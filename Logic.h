@@ -49,6 +49,7 @@ private:
 	CameraContainer mCameras{ window.Gfx() };
 	Frustrum frustrum;
 	Light light;
+
 	FrameController fc{ window.Gfx() };
 	//std::vector<std::unique_ptr<class Model>> mBoxes = {};
 	std::vector<std::unique_ptr<class Box>> mSkyboxes = {};
@@ -56,11 +57,12 @@ private:
 	std::vector<std::unique_ptr<class Particle>> mParticles = {};
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
+	std::unique_ptr<Melon> mTest = std::make_unique<Melon>(window.Gfx(), 5.f);
 	std::unique_ptr<Vector> mBall = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
 	std::unique_ptr<Cylinder> mGoal = std::make_unique<Cylinder>(
 		window.Gfx(), 11.5f, 1.0f, 0.0f,
 		PI / 2, 0.f, 0.0f,
-		5.0f, 5.0f, 5.0f, DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+		1.0f, 1.0f, 1.0f, DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }
 	);
 
 	std::unique_ptr<Sheet> mRTSheet = std::make_unique<Sheet>(window.Gfx(), L"fullscreenVS.cso", L"fullscreenPS.cso" );

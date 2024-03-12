@@ -174,7 +174,7 @@ void Logic::BallControl()
 			mBall.get()->SetPosition(ballPosition);
 		}
 
-		static float goalX = 10.f, goalY = 0.f, goalZ = 10.f;
+		static float goalX = 25.f, goalY = 0.f, goalZ = 15.f;
 		ImGui::Text("GoalPos");
 		ImGui::SliderFloat("goalX", &goalX, -180.0f, 180.0f);
 		ImGui::SliderFloat("goalY", &goalY, -180.0f, 180.0f);
@@ -188,15 +188,18 @@ void Logic::BallControl()
 			direction = DirectX::XMVector3Normalize(direction);
 			mBall.get()->SetDirection(direction);
 			mGoal->Update(0.f, XMFLOAT3{ goalX, goalY, goalZ });
-
 		}
 
-		static float aimXZ = 35.26f, aimY = 0.f;
+		static float aimXZ = 0.f, aimY = 0.f;
 		static float radius = 1000.f;
 		ImGui::Text("Aim");
 		ImGui::SliderFloat("angleXZ", &aimXZ, -180.0f, 180.0f);
 		ImGui::SliderFloat("aimY", &aimY, -180.0f, 180.0f);
-
+		if (ImGui::Button("AimGoal"))
+		{
+			aimXZ = 0.f;
+			aimY = 0.f;
+		}
 
 		// calculate distance between ball and goal
 		static float distance;
@@ -207,30 +210,27 @@ void Logic::BallControl()
 		} 
 		
 		// calculate grounded angle
+		static float newAimX = goalX, newAimZ = goalZ;
 		{
 			float normX = goalX - ballX;
 			float normZ = goalZ - ballZ;
-			float distBallToGoal = sqrtf((normX * normX) + (normZ * normZ)); //
-			float angleA = atanf(normZ / normX); //
+			float distBallToGoal = sqrtf((normX * normX) + (normZ * normZ));
+			if (normZ == 0.f) // Division with zero guard
+				normZ == 0.01f;
+			float angleA = atan2f(normZ, normX);
 			float angleB = deg_rad(aimXZ);
 			float newX = cosf(angleA + angleB) * distBallToGoal;
 			float newZ = sinf(angleA + angleB) * distBallToGoal;
-			float newAimX = ballX + newX;
-			float newAimZ = ballZ + newZ;
-
-			auto t = 0;
+			newAimX = ballX + newX;
+			newAimZ = ballZ + newZ;
 		}
 
 
-		DirectX::XMVECTOR target = DirectX::XMVectorSet(goalX, goalY, goalZ, 0.0f);
-		auto lightPos = light.GetPosition();
-		auto tgt = XMLoadFloat3(&lightPos);
-		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(tgt, ballPosition);
+		DirectX::XMVECTOR target = DirectX::XMVectorSet(newAimX, goalY, newAimZ, 0.0f);
+		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
 		direction = DirectX::XMVector3Normalize(direction);
 		mBall.get()->SetDirection(direction);
 
-		/*auto lightPos = light.GetPosition();
-		DirectX::XMVECTOR target = DirectX::XMLoadFloat3(&lightPos);*/
 	}
 }
 
