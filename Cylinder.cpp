@@ -70,10 +70,11 @@ Cylinder::Cylinder(Graphics& gfx,
 	AddBind(std::make_unique<PixelConstantBuffer<PixelShaderConsts>>(gfx, pcb2, 1u));
 	AddBind(std::make_unique<CBufferTransform>(gfx, *this));
 	// model deformation transform (per instance, not stored as bind)
-	dx::XMStoreFloat3x3(
-		&modelTransform,
-		dx::XMMatrixScaling(scale.x, scale.y, scale.z)
-	);
+	auto tf = dx::XMMatrixScaling(scale.x, scale.y, scale.z) *
+		dx::XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) *
+		dx::XMMatrixTranslation(position.x, position.y, position.z);
+
+	dx::XMStoreFloat3x3(&mModelTransform, tf);
 }
 
 Cylinder::Cylinder(Graphics& gfx,
@@ -143,7 +144,7 @@ Cylinder::Cylinder(Graphics& gfx,
 	AddBind(std::make_unique<CBufferTransform>(gfx, *this));
 	// model deformation transform (per instance, not stored as bind)
 	dx::XMStoreFloat3x3(
-		&modelTransform,
+		&mModelTransform,
 		dx::XMMatrixScaling(scaleX, scaleY, scaleZ)
 	);
 }
@@ -151,18 +152,35 @@ Cylinder::Cylinder(Graphics& gfx,
 
 void Cylinder::Update(float dt, DirectX::XMFLOAT3 pos) noexcept
 {
+	using namespace DirectX;
 	mScale.x += mDeltaScale.x * dt;
 	mScale.y += mDeltaScale.y * dt;
 	mScale.z += mDeltaScale.z * dt;
 	mObjRotation.x += mDeltaObjRotation.x * dt;
 	mObjRotation.y += mDeltaObjRotation.y * dt;
 	mObjRotation.z += mDeltaObjRotation.z * dt;
-	mWorldRotation.x += mDeltaWorldRotation.x * dt;
-	mWorldRotation.y += mDeltaWorldRotation.y * dt;
-	mWorldRotation.z += mDeltaWorldRotation.z * dt;
+	mPointRotation.x = mDeltaPointRotation.x * dt;
+	mPointRotation.y = mDeltaPointRotation.y * dt;
+	mPointRotation.z = mDeltaPointRotation.z * dt;
 	mPosition.x += mDeltaTranslation.x * dt;
 	mPosition.y += mDeltaTranslation.y * dt;
 	mPosition.z += mDeltaTranslation.z * dt;
+
+	// Calculate the translation to move the object to the rotation origin and back
+	XMVECTOR toRotOrigin = { mRotationOrigin.x - mPosition.x, mRotationOrigin.y - mPosition.y, mRotationOrigin.z - mPosition.z };
+	XMMATRIX translationToOrigin = XMMatrixTranslationFromVector(toRotOrigin);
+	XMMATRIX translationBack = XMMatrixTranslationFromVector(-toRotOrigin);
+	// Calculate and combine the rotation matrices for rotations around X, Y, and Z axes
+	XMMATRIX rotationX = XMMatrixRotationX(mPointRotation.x);
+	XMMATRIX rotationY = XMMatrixRotationY(mPointRotation.y);
+	XMMATRIX rotationZ = XMMatrixRotationZ(mPointRotation.z);
+	XMMATRIX rotationMatrix = rotationX * rotationY * rotationZ;
+	// Combine the transformations
+	XMMATRIX transformMatrix = translationBack * rotationMatrix * translationToOrigin;
+	// Apply the transformation to the object's position
+	XMVECTOR newPosition = XMVector3TransformCoord(XMLoadFloat3(&mPosition), transformMatrix);
+	// Update the position
+	XMStoreFloat3(&mPosition, newPosition);
 }
 
 void Cylinder::SetPosition(DirectX::FXMVECTOR pos) noexcept
@@ -181,13 +199,17 @@ void Cylinder::SetDeltaTranslation(DirectX::FXMVECTOR dpos) noexcept
 {
 	DirectX::XMStoreFloat3(&mDeltaTranslation, dpos);
 }
-void Cylinder::SetDeltaRotation(DirectX::FXMVECTOR drot) noexcept
+void Cylinder::SetDeltaObjRotation(DirectX::FXMVECTOR drot) noexcept
 {
 	DirectX::XMStoreFloat3(&mDeltaObjRotation, drot);
 }
-void Cylinder::SetDeltaWorldRotation(DirectX::FXMVECTOR drot) noexcept
+void Cylinder::SetDeltaPointRotation(DirectX::FXMVECTOR drot) noexcept
 {
-	DirectX::XMStoreFloat3(&mDeltaWorldRotation, drot);
+	DirectX::XMStoreFloat3(&mDeltaPointRotation, drot);
+}
+void Cylinder::SetPointRotationOrigin(DirectX::FXMVECTOR points) noexcept
+{
+	DirectX::XMStoreFloat3(&mRotationOrigin, points);
 }
 void Cylinder::SetDeltaScale(DirectX::FXMVECTOR dscale) noexcept
 {
@@ -202,13 +224,10 @@ std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> Cylinder::GetBoundingBox() const
 
 DirectX::XMMATRIX Cylinder::GetTransformXM() const noexcept
 {
-	//return DirectX::XMLoadFloat3x3(&modelTransform);
-	return /*DirectX::XMLoadFloat3x3(&modelTransform) **/
-		DirectX::XMMatrixScaling(mScale.x, mScale.y, mScale.z) *
+	return DirectX::XMMatrixScaling(mScale.x, mScale.y, mScale.z) *
 		DirectX::XMMatrixRotationRollPitchYaw(mObjRotation.x, mObjRotation.y, mObjRotation.z) *
-		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z) /**
-		DirectX::XMMatrixRotationRollPitchYaw(mWorldRotation.x, mWorldRotation.y, mWorldRotation.z) *
-		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z)*/;
+		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
+
 }
 
 DirectX::XMFLOAT3 Cylinder::GetRotation() const noexcept

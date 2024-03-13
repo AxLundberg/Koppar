@@ -181,8 +181,8 @@ void Logic::BallControl()
 			mBall.get()->SetPosition(ballPosition);
 		}
 
-		static float goalX = 25.f, goalY = 0.f, goalZ = 15.f;
-		static XMFLOAT3 imguiGoalPos = { 25.f, 0.f, 15.f };
+		static float goalX = 15.f, goalY = 0.f, goalZ = 0.f;
+		static XMFLOAT3 imguiGoalPos = { 15.f, 0.f, 0.f };
 		ImGui::Text("GoalPos");
 		ImGui::SliderFloat3("GoalPos", reinterpret_cast<float*>(&imguiGoalPos), -180.f, 180.f, "%.2f");
 		ImGui::SliderFloat("goalX", &goalX, -180.0f, 180.0f);
@@ -198,8 +198,12 @@ void Logic::BallControl()
 			direction = XMVector3Normalize(direction);
 			mAim.get()->SetDirection(direction);
 			mGoal->SetPosition(goalPosition);
+			XMVECTOR test = { .0f, .5f, .5f };
+			XMVECTOR test2 = { 10.0f, .0f, 10.f };
+			mGoal->SetPointRotationOrigin(test2);
+			mGoal->SetDeltaPointRotation(test);
+			//mGoal->SetDeltaTranslation(test);
 		}
-
 		static float aimXZ = 0.f, aimY = 0.f;
 		static float radius = 1000.f;
 		ImGui::Text("Aim");
@@ -247,10 +251,12 @@ void Logic::BallControl()
 void Logic::DuFresne()
 {
 	using namespace DirectX;
+	static float df = check_t();
 	std::wostringstream wostr;
 	int y = window.moose.GetPosY();
 	int x = window.moose.GetPosX();
-	float df = check_t();
+	dt = check_t() - df;
+	df = check_t();
 	window.Gfx().BeginFrame(0.4f, 0.3f, 0.6f);
 	wostr << L"XXX: " << x << "  YYY: " << y << " COUNT: " << count;
 	window.SetWindowTitle(wostr.str());
@@ -278,7 +284,7 @@ void Logic::DuFresne()
 
 	fc.BeginFrame(window.Gfx());
 
-
+	mGoal->Update(dt, {0.f, 0.f, 0.f});
 	if (shadowPass)
 	{
 		ShadowPass(transform, transform2);
@@ -291,6 +297,7 @@ void Logic::DuFresne()
 	{
 		for (UINT i = 0; i<drawables.size(); i++)
 		{
+			drawables[i].get()->Update(0.f, { 0.f, 0.f, 0.f });
 			drawables[i].get()->Draw(window.Gfx());
 		}
 		mBall->SetPosition(XMVECTOR{0.f, 0.f, 0.f});

@@ -42,20 +42,22 @@ public:
 	void SetRotation(DirectX::FXMVECTOR rotation) noexcept;
 	void SetScale(DirectX::FXMVECTOR scale) noexcept;
 	void SetDeltaTranslation(DirectX::FXMVECTOR translation) noexcept;
-	void SetDeltaRotation(DirectX::FXMVECTOR rotation) noexcept;
+	void SetDeltaObjRotation(DirectX::FXMVECTOR rotation) noexcept;
 	void SetDeltaScale(DirectX::FXMVECTOR scale) noexcept;
-	void SetDeltaWorldRotation(DirectX::FXMVECTOR rotation) noexcept;
+	void SetDeltaPointRotation(DirectX::FXMVECTOR rotation) noexcept;
+	void SetPointRotationOrigin(DirectX::FXMVECTOR point) noexcept;
 private:
 	//color
 	DirectX::XMFLOAT3 mColor = { 0.f, 0.f, 0.f };
+	DirectX::XMFLOAT3 mRotationOrigin = { 0.f, 0.f, 0.f };
 	DirectX::XMFLOAT3 mScale;
 	DirectX::XMFLOAT3 mObjRotation;
-	DirectX::XMFLOAT3 mWorldRotation;
+	DirectX::XMFLOAT3 mPointRotation;
 	DirectX::XMFLOAT3 mPosition;
-	DirectX::XMFLOAT3X3 modelTransform = {};
+	DirectX::XMFLOAT3X3 mModelTransform = {};
 	DirectX::XMFLOAT3 mDeltaTranslation = INIT_DELTA_VALUES;
 	DirectX::XMFLOAT3 mDeltaObjRotation = INIT_DELTA_VALUES;
-	DirectX::XMFLOAT3 mDeltaWorldRotation = INIT_DELTA_VALUES;
+	DirectX::XMFLOAT3 mDeltaPointRotation = INIT_DELTA_VALUES;
 	DirectX::XMFLOAT3 mDeltaScale = INIT_DELTA_VALUES;
 	// positional
 	//float posx = 0.0f;
