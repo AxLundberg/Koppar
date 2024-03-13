@@ -75,9 +75,9 @@ void Ball::Update(float dt, DirectX::XMFLOAT3 pos) noexcept
 
 }
 
-void Ball::SetPosition(DirectX::XMFLOAT3 pos) noexcept
+void Ball::SetPosition(DirectX::FXMVECTOR pos) noexcept
 {
-	mPosition = pos;
+	DirectX::XMStoreFloat3(&mPosition, pos);
 }
 void Ball::SetRotation(DirectX::XMFLOAT3 pos) noexcept
 {

@@ -163,30 +163,35 @@ void Logic::BallControl()
 		using namespace std::string_literals;
 
 		static float ballX = 0.f, ballY = 0.f, ballZ = 0.f;
+		static XMFLOAT3 imguiBallPos = {0.f, 0.f, 0.f};
 		ImGui::Text("BallPos");
+		ImGui::SliderFloat3("BallPos", reinterpret_cast<float*>(&imguiBallPos), -180.f, 180.f, "%.2f");
 		ImGui::SliderFloat("ballX", &ballX, -180.0f, 180.0f);
 		ImGui::SliderFloat("ballY", &ballY, -180.0f, 180.0f);
 		ImGui::SliderFloat("ballZ", &ballZ, -180.0f, 180.0f);
 
-		XMVECTOR ballPosition = DirectX::XMVectorSet(ballX, ballY, ballZ, 0.0f);
-		if (ImGui::Button("SpawnBall"))
-		{
+		static XMVECTOR ballPosition;
+		if (ImGui::Button("SpawnBall")){
+			ballPosition = XMLoadFloat3(&imguiBallPos);
+			mAim.get()->SetPosition(ballPosition);
 			mBall.get()->SetPosition(ballPosition);
 		}
 
 		static float goalX = 25.f, goalY = 0.f, goalZ = 15.f;
+		static XMFLOAT3 imguiGoalPos = { 0.f, 0.f, 0.f };
 		ImGui::Text("GoalPos");
+		ImGui::SliderFloat3("GoalPos", reinterpret_cast<float*>(&imguiGoalPos), -180.f, 180.f, "%.2f");
 		ImGui::SliderFloat("goalX", &goalX, -180.0f, 180.0f);
 		ImGui::SliderFloat("goalY", &goalY, -180.0f, 180.0f);
 		ImGui::SliderFloat("goalZ", &goalZ, -180.0f, 180.0f);
 
-		auto goalPosition = XMVectorSet(goalX, goalY, goalZ, 0.0f);
+		static XMVECTOR goalPosition = XMLoadFloat3(&imguiGoalPos);
 		if (ImGui::Button("SetGoal"))
 		{
-			DirectX::XMVECTOR target = DirectX::XMVectorSet(goalX, goalY, goalZ, 0.0f);
-			DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
-			direction = DirectX::XMVector3Normalize(direction);
-			mBall.get()->SetDirection(direction);
+			XMVECTOR target = XMLoadFloat3(&imguiGoalPos);
+			XMVECTOR direction = XMVectorSubtract(target, ballPosition);
+			direction = XMVector3Normalize(direction);
+			mAim.get()->SetDirection(direction);
 			mGoal->Update(0.f, XMFLOAT3{ goalX, goalY, goalZ });
 		}
 
@@ -229,7 +234,7 @@ void Logic::BallControl()
 		DirectX::XMVECTOR target = DirectX::XMVectorSet(newAimX, goalY, newAimZ, 0.0f);
 		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, ballPosition);
 		direction = DirectX::XMVector3Normalize(direction);
-		mBall.get()->SetDirection(direction);
+		mAim.get()->SetDirection(direction);
 
 	}
 }
@@ -283,9 +288,8 @@ void Logic::DuFresne()
 		{
 			drawables[i].get()->Draw(window.Gfx());
 		}
-		mTest->SetPosition(DirectX::XMFLOAT3{10.f, 10.f, 10.f});
-		mTest2->Draw(window.Gfx());
-		mTest->Draw(window.Gfx());
+		mBall->SetPosition(XMVECTOR{0.f, 0.f, 0.f});
+		mBall->Draw(window.Gfx());
 		mGoal->Draw(window.Gfx());
 	}
 	if (revolve)
@@ -316,9 +320,8 @@ void Logic::DuFresne()
 		DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0); // (1, 1, 1)
 		//mBall.get()->SetPosition(position);
 		//mBall.get()->SetDirection(direction);
-		mBall.get()->SetScale(scale);
-
-		mBall.get()->Draw(window.Gfx());
+		mAim.get()->SetScale(scale);
+		mAim.get()->Draw(window.Gfx());
 	}
 	
 

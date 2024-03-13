@@ -12,7 +12,7 @@ public:
 	DirectX::XMMATRIX GetTransformXM() const noexcept override;
 	std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> GetBoundingBox() const noexcept override;
 	DirectX::XMFLOAT3 GetRotation() const noexcept override;
-	void SetPosition(DirectX::XMFLOAT3 pos) noexcept;
+	void SetPosition(DirectX::FXMVECTOR pos) noexcept;
 	void SetRotation(DirectX::XMFLOAT3 rot) noexcept;
 private:
 	//color
