@@ -47,7 +47,7 @@ public:
 	void SetDeltaWorldRotation(DirectX::FXMVECTOR rotation) noexcept;
 private:
 	//color
-	DirectX::XMFLOAT3 color;
+	DirectX::XMFLOAT3 mColor = { 0.f, 0.f, 0.f };
 	DirectX::XMFLOAT3 mScale;
 	DirectX::XMFLOAT3 mObjRotation;
 	DirectX::XMFLOAT3 mWorldRotation;

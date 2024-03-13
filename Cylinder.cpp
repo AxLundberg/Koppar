@@ -15,6 +15,7 @@ Cylinder::Cylinder(Graphics& gfx,
 	mColor(color)
 {
 	namespace dx = DirectX;
+
 	if (!IsStaticInitialized())
 	{
 		auto pvs = std::make_unique<VertexShader>(gfx, L"ColorIndexVS.cso");
@@ -37,13 +38,13 @@ Cylinder::Cylinder(Graphics& gfx,
 		AddStaticBind(std::make_unique<IndexBuffer>(gfx, model.indices));
 
 
-		struct PixelShaderConsts
+		/*struct PixelShaderConsts
 		{
 			dx::XMFLOAT3 color = color;
 			float padding = {};
 		} pcb2;
 
-		AddStaticBind(std::make_unique<PixelConstantBuffer<PixelShaderConsts>>(gfx, pcb2, 1u));
+		AddStaticBind(std::make_unique<PixelConstantBuffer<PixelShaderConsts>>(gfx, pcb2, 1u));*/
 
 		const std::vector<D3D11_INPUT_ELEMENT_DESC> ied =
 		{
@@ -58,7 +59,15 @@ Cylinder::Cylinder(Graphics& gfx,
 	{
 		SetStaticIndexBuffer();
 	}
+	
+	struct PixelShaderConsts
+	{
+		dx::XMFLOAT3 color = {};
+		float padding = {};
+	} pcb2;
+	pcb2.color = color;
 
+	AddBind(std::make_unique<PixelConstantBuffer<PixelShaderConsts>>(gfx, pcb2, 1u));
 	AddBind(std::make_unique<CBufferTransform>(gfx, *this));
 	// model deformation transform (per instance, not stored as bind)
 	dx::XMStoreFloat3x3(
@@ -142,18 +151,18 @@ Cylinder::Cylinder(Graphics& gfx,
 
 void Cylinder::Update(float dt, DirectX::XMFLOAT3 pos) noexcept
 {
-	mScale.x = mDeltaScale.x * dt;
-	mScale.y = mDeltaScale.y * dt;
-	mScale.z = mDeltaScale.z * dt;
-	mObjRotation.x = mDeltaObjRotation.x * dt;
-	mObjRotation.y = mDeltaObjRotation.y * dt;
-	mObjRotation.z = mDeltaObjRotation.z * dt;
-	mWorldRotation.x = mDeltaWorldRotation.x * dt;
-	mWorldRotation.y = mDeltaWorldRotation.y * dt;
-	mWorldRotation.z = mDeltaWorldRotation.z * dt;
-	mPosition.x = mDeltaTranslation.x * dt;
-	mPosition.y = mDeltaTranslation.y * dt;
-	mPosition.z = mDeltaTranslation.z * dt;
+	mScale.x += mDeltaScale.x * dt;
+	mScale.y += mDeltaScale.y * dt;
+	mScale.z += mDeltaScale.z * dt;
+	mObjRotation.x += mDeltaObjRotation.x * dt;
+	mObjRotation.y += mDeltaObjRotation.y * dt;
+	mObjRotation.z += mDeltaObjRotation.z * dt;
+	mWorldRotation.x += mDeltaWorldRotation.x * dt;
+	mWorldRotation.y += mDeltaWorldRotation.y * dt;
+	mWorldRotation.z += mDeltaWorldRotation.z * dt;
+	mPosition.x += mDeltaTranslation.x * dt;
+	mPosition.y += mDeltaTranslation.y * dt;
+	mPosition.z += mDeltaTranslation.z * dt;
 }
 
 void Cylinder::SetPosition(DirectX::FXMVECTOR pos) noexcept
@@ -194,11 +203,12 @@ std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> Cylinder::GetBoundingBox() const
 DirectX::XMMATRIX Cylinder::GetTransformXM() const noexcept
 {
 	//return DirectX::XMLoadFloat3x3(&modelTransform);
-	return DirectX::XMLoadFloat3x3(&modelTransform) *
+	return /*DirectX::XMLoadFloat3x3(&modelTransform) **/
+		DirectX::XMMatrixScaling(mScale.x, mScale.y, mScale.z) *
 		DirectX::XMMatrixRotationRollPitchYaw(mObjRotation.x, mObjRotation.y, mObjRotation.z) *
-		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z) *
+		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z) /**
 		DirectX::XMMatrixRotationRollPitchYaw(mWorldRotation.x, mWorldRotation.y, mWorldRotation.z) *
-		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
+		DirectX::XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z)*/;
 }
 
 DirectX::XMFLOAT3 Cylinder::GetRotation() const noexcept

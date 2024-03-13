@@ -34,15 +34,6 @@ Ball::Ball(Graphics& gfx,
 
 		AddStaticBind(std::make_unique<IndexBuffer>(gfx, model.indices));
 
-
-		struct PixelShaderConsts
-		{
-			dx::XMFLOAT3 color = { 0.99f, 0.3f, 0.8f };
-			float padding = {};
-		} pcb2;
-
-		AddStaticBind(std::make_unique<PixelConstantBuffer<PixelShaderConsts>>(gfx, pcb2, 1u));
-
 		const std::vector<D3D11_INPUT_ELEMENT_DESC> ied =
 		{
 			{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0 },
@@ -56,6 +47,15 @@ Ball::Ball(Graphics& gfx,
 	{
 		SetStaticIndexBuffer();
 	}
+
+	struct PixelShaderConsts
+	{
+		dx::XMFLOAT3 color = {};
+		float padding = {};
+	} pcb2;
+
+	pcb2.color = color;
+	AddBind(std::make_unique<PixelConstantBuffer<PixelShaderConsts>>(gfx, pcb2, 1u));
 
 	AddBind(std::make_unique<CBufferTransform>(gfx, *this));
 	// model deformation transform (per instance, not stored as bind)

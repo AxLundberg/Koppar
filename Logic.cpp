@@ -41,57 +41,61 @@ Logic::Logic()
 			{
 			case 1:	// X-axis
 			{
-				return std::make_unique<Cylinder>(
-					gfx, 0.0f, 0.0f, 0.0f,
-					0.0f, PI/2, 0.0f,
-					0.051f, 0.051f, 100.0f,
-					XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 0.0f, 0.0f, 0.0f },
+					XMFLOAT3{0.0f, PI / 2, 0.0f},
+					XMFLOAT3{ 0.15f, 0.15f, 100.0f },
+					XMFLOAT3{ 1.0f, 0.0f, 0.0f }
 				);
 			}
 			case 2: // Y-axis
-				return std::make_unique<Cylinder>(
-					gfx, 0.0f, 0.0f, 0.0f,
-					PI/2, 0.0f, 0.0f,
-					0.051f, 0.051f, 100.0f,
-					XMFLOAT3{ 0.0f, 20.0f, -1.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 0.0f, 0.0f, 0.0f},
+					XMFLOAT3{ PI/2, 0.0f, 0.0f},
+					XMFLOAT3{ .15f, 0.15f, 100.0f },
+					XMFLOAT3{ 0.0f, 1.0f, 0.0f }
 					);
 			case 3: // Z-axis
-				return std::make_unique<Cylinder>(
-					gfx, 0.0f, 0.0f, 0.0f,			//pos
-					0.0f, 0.0f, 0.0f,			//rot (around x,y,z)
-					0.051f, 0.051f, 100.0f,		//scale
-					XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 0.0f, 0.0f, 0.0f },			//pos
+					XMFLOAT3{ 0.0f, 0.0f, 0.0f },			//rot (around x,y,z)
+					XMFLOAT3{ 0.15f, 0.15f, 100.0f },		//scale
+					XMFLOAT3{ 0.0f, 0.0f, 1.0f }
 					);
 			case 4:	// "x"
-				return std::make_unique<Cylinder>(
-					gfx, 11.5f, 1.0f, 0.0f,
-					PI/4, PI/2, 0.0f,
-					0.04f, 0.04f, 1.0f,
-					XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 11.5f, -1.0f, 0.0f },
+					XMFLOAT3{PI/4, PI/2, 0.0f},
+					XMFLOAT3{0.2f, 0.2f, 1.0f},
+					XMFLOAT3{ 1.0f, 0.0f, 0.0f }
 					);
 			case 5:	// "x"
-				return std::make_unique<Cylinder>(
-					gfx, 11.5f, 1.0f, 0.0f,
-					PI/4, -PI/2, 0.0f,
-					0.04f, 0.04f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 11.5f, -1.0f, 0.0f },
+					XMFLOAT3{ PI/4, -PI/2, 0.0f },
+					XMFLOAT3{ 0.2f, 0.2f, 1.0f },
+					XMFLOAT3{ 1.0f, 0.0f, 0.0f }
 					);
 			case 6:	// "z"
-				return std::make_unique<Cylinder>(
-					gfx, 0.0f, -0.1f, 11.5f,
-					0.0f, PI/2, 0.0f,
-					0.04f, 0.04f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 0.0f, -.9f, 11.5f },
+					XMFLOAT3{0.0f, PI/2, 0.0f },
+					XMFLOAT3{0.2f, 0.2f, 1.0f }, 
+					XMFLOAT3{ 0.0f, 0.0f, 1.0f }
 					);
 			case 7:	// "z"
-				return std::make_unique<Cylinder>(
-					gfx, 0.0f, 1.1f, 11.5f,
-					0.0f, PI/2, 0.0f,
-					0.04f, 0.04f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{0.0f, -2.2f, 11.5f },
+					XMFLOAT3{0.0f, PI/2, 0.0f },
+					XMFLOAT3{ 0.2f, 0.2f, 1.0f },
+					XMFLOAT3{ 0.0f, 0.0f, 1.0f }
 					);
 			case 8:	// "z"
-				return std::make_unique<Cylinder>(
-					gfx, 0.0f, 0.5f, 11.5f,
-					-PI/5, PI/2, 0.0f,
-					0.04f, 0.04f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }
+				return std::make_unique<Cylinder>(gfx,
+					XMFLOAT3{ 0.0f, -1.55f, 11.5f },
+					XMFLOAT3{ -PI/5, PI/2, 0.0f },
+					XMFLOAT3{ 0.2f, 0.2f, 1.0f },
+					XMFLOAT3{ 0.0f, 0.0f, 1.0f }
 					);
 			default:
 				assert(false && "bad drawable type in factory");
@@ -178,7 +182,7 @@ void Logic::BallControl()
 		}
 
 		static float goalX = 25.f, goalY = 0.f, goalZ = 15.f;
-		static XMFLOAT3 imguiGoalPos = { 0.f, 0.f, 0.f };
+		static XMFLOAT3 imguiGoalPos = { 25.f, 0.f, 15.f };
 		ImGui::Text("GoalPos");
 		ImGui::SliderFloat3("GoalPos", reinterpret_cast<float*>(&imguiGoalPos), -180.f, 180.f, "%.2f");
 		ImGui::SliderFloat("goalX", &goalX, -180.0f, 180.0f);
@@ -188,11 +192,12 @@ void Logic::BallControl()
 		static XMVECTOR goalPosition = XMLoadFloat3(&imguiGoalPos);
 		if (ImGui::Button("SetGoal"))
 		{
-			XMVECTOR target = XMLoadFloat3(&imguiGoalPos);
+			goalPosition = XMLoadFloat3(&imguiGoalPos);
+			XMVECTOR target = goalPosition;
 			XMVECTOR direction = XMVectorSubtract(target, ballPosition);
 			direction = XMVector3Normalize(direction);
 			mAim.get()->SetDirection(direction);
-			mGoal->Update(0.f, XMFLOAT3{ goalX, goalY, goalZ });
+			mGoal->SetPosition(goalPosition);
 		}
 
 		static float aimXZ = 0.f, aimY = 0.f;
