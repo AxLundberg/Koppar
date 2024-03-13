@@ -207,9 +207,9 @@ void Cylinder::SetDeltaPointRotation(DirectX::FXMVECTOR drot) noexcept
 {
 	DirectX::XMStoreFloat3(&mDeltaPointRotation, drot);
 }
-void Cylinder::SetPointRotationOrigin(DirectX::FXMVECTOR points) noexcept
+void Cylinder::SetPointRotationOrigin(DirectX::FXMVECTOR point) noexcept
 {
-	DirectX::XMStoreFloat3(&mRotationOrigin, points);
+	DirectX::XMStoreFloat3(&mRotationOrigin, point);
 }
 void Cylinder::SetDeltaScale(DirectX::FXMVECTOR dscale) noexcept
 {
