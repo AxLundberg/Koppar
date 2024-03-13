@@ -166,15 +166,11 @@ void Logic::BallControl()
 		using namespace DirectX;
 		using namespace std::string_literals;
 
-		static float ballX = 0.f, ballY = 0.f, ballZ = 0.f;
 		static XMFLOAT3 imguiBallPos = {0.f, 0.f, 0.f};
 		static XMFLOAT3 ballPosition = { 0.f, 0.f, 0.f };
 		static XMVECTOR bp = XMLoadFloat3(&ballPosition);
 		ImGui::Text("BallPos");
 		ImGui::SliderFloat3("BallPos", reinterpret_cast<float*>(&imguiBallPos), -180.f, 180.f, "%.2f");
-		ImGui::SliderFloat("ballX", &ballX, -180.0f, 180.0f);
-		ImGui::SliderFloat("ballY", &ballY, -180.0f, 180.0f);
-		ImGui::SliderFloat("ballZ", &ballZ, -180.0f, 180.0f);
 
 		if (ImGui::Button("SpawnBall")){
 			ballPosition = imguiBallPos;
@@ -197,11 +193,12 @@ void Logic::BallControl()
 			mAim.get()->SetDirection(direction);
 			mGoal->SetPosition(target);
 		}
-		static float aimXZ = 0.f, aimY = 0.f;
+		static float aimXZ = 0.f, aimY = 0.f, imguiAimXZ = 0.f, imguiAimY = 0.f;
 		static float radius = 1000.f;
 		ImGui::Text("Aim");
-		ImGui::SliderFloat("angleXZ", &aimXZ, -180.0f, 180.0f);
-		ImGui::SliderFloat("aimY", &aimY, -180.0f, 180.0f);
+		ImGui::SliderFloat("angleXZ", &imguiAimXZ, -180.0f, 180.0f);
+		ImGui::SliderFloat("aimY", &imguiAimY, -180.0f, 180.0f);
+		aimXZ = -imguiAimXZ;
 		if (ImGui::Button("AimGoal"))
 		{
 			aimXZ = 0.f;
@@ -220,8 +217,8 @@ void Logic::BallControl()
 		// calculate grounded angle
 		static float newAimX = goalPosition.x, newAimZ = goalPosition.z;
 		{
-			float normX = goalPosition.x - ballX;
-			float normZ = goalPosition.z - ballZ;
+			float normX = goalPosition.x - ballPosition.x;
+			float normZ = goalPosition.z - ballPosition.z;
 			float distBallToGoal = sqrtf((normX * normX) + (normZ * normZ));
 			if (normZ == 0.f) // Division with zero guard
 				normZ = 0.01f;
@@ -229,16 +226,14 @@ void Logic::BallControl()
 			float angleB = deg_rad(aimXZ);
 			float newX = cosf(angleA + angleB) * distBallToGoal;
 			float newZ = sinf(angleA + angleB) * distBallToGoal;
-			newAimX = ballX + newX;
-			newAimZ = ballZ + newZ;
+			newAimX = ballPosition.x + newX;
+			newAimZ = ballPosition.z + newZ;
 		}
-
 
 		DirectX::XMVECTOR target = DirectX::XMVectorSet(newAimX, goalPosition.y, newAimZ, 0.0f);
 		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, bp);
 		direction = DirectX::XMVector3Normalize(direction);
 		mAim.get()->SetDirection(direction);
-
 	}
 }
 
