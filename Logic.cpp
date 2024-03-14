@@ -237,7 +237,7 @@ void Logic::BallControl()
 		auto AngleYXplane = -atan2f(y, x);
 		// Set Aim
 		static float rightLeft = 0.f, upDown = 0.f;
-		ImGui::Text("TestAim");
+		ImGui::Text("Aim");
 		ImGui::SliderFloat("RightLeft", &rightLeft, -180.0f, 180.0f);
 		ImGui::SliderFloat("UpDown", &upDown, 0.0f, 90.0f);
 		if (ImGui::Button("Aim Towards Goal"))
@@ -250,19 +250,31 @@ void Logic::BallControl()
 		auto rot = XMVECTOR{ roll, pitch, 0.f };
 		mAim.get()->SetRotation(rot);
 
+		// tmp init velocity slider
+		static float initVelocity = 25.f;
+		ImGui::Text("TmpInitVelocitySlider");
+		ImGui::SliderFloat("initVelocity", &initVelocity, 0.0f, 90.0f);
+
 		if (ImGui::Button("Trajectory"))
 		{
-			float v0 = 25.f;
-			float angle = deg_rad(35.f);
-			float it = ImpactT(20, v0, angle);
-			float timeStep = it / 50;
-			size_t nStep = 50;
+			mRenderTrajectory = true;
+		}
+		if (mRenderTrajectory)
+		{
+			float angle = -roll;
+			float it = ImpactT(0, initVelocity, angle);
+			float timeStep = it / N_TRAJECTORY_STEPS;
+			size_t nStep = N_TRAJECTORY_STEPS;
 			for (size_t i = 0; i < nStep; i++)
 			{
-				auto [x,y] = ProjectileTrajectory(v0, angle, i * timeStep);
-				mTrajectory[i].get()->SetPosition({ x, y, 0.f });
+				auto [x, y] = ProjectileTrajectory(initVelocity, angle, i * timeStep);
+
+				float dist = sqrtf(x * x + y * y);
+				float newX = ballPosition.x + x * sinf(pitch);
+				float newZ = ballPosition.y + x * cosf(pitch);
+
+				mTrajectory[i].get()->SetPosition({ newX, y, newZ });
 			}
-			mRenderTrajectory = true;
 		}
 	}
 }
