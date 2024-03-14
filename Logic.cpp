@@ -155,6 +155,37 @@ Logic::Logic()
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(12.0f, 12.0f, 12.0f))));
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, 12.0f))));
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, -12.0f))));
+	for (size_t i = 0; i < 50; i++)
+	{
+
+		DirectX::XMFLOAT3 col = { 1.f - 0.75f * i/50, 0.2f, 0.2f};
+		mTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), 0.2f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, col));
+	}
+}
+
+float ImpactT(float y0, float v0, float angle)
+{
+	const float g = 9.8f;
+	const float v0y = sinf(angle) * v0;
+	const float a = g / 2;
+	const float b = -v0y;
+	const float c = 0 - y0;
+	float p = b / a;
+	float q = c / a;
+	float t1 = -p/2 + sqrtf(((p * p) / 4) - q);
+	float t2 = -p/2 - sqrtf(((p * p) / 4) - q);
+	return t1;
+}
+
+std::pair<float, float> ProjectileTrajectory(float initSpeed, float angle, float t)
+{
+	const float g = 9.8f;
+	float initVelocityY = sinf(angle) * initSpeed;
+	float initVelocityX = cosf(angle) * initSpeed;
+
+	float height = initVelocityY * t - 0.5f * g * t * t;
+	float length = initVelocityX * t;
+	return { length, height };
 }
 
 void Logic::BallControl()
@@ -218,6 +249,21 @@ void Logic::BallControl()
 		auto pitch = angleXZplane + deg_rad(rightLeft);
 		auto rot = XMVECTOR{ roll, pitch, 0.f };
 		mAim.get()->SetRotation(rot);
+
+		if (ImGui::Button("Trajectory"))
+		{
+			float v0 = 25.f;
+			float angle = deg_rad(35.f);
+			float it = ImpactT(20, v0, angle);
+			float timeStep = it / 50;
+			size_t nStep = 50;
+			for (size_t i = 0; i < nStep; i++)
+			{
+				auto [x,y] = ProjectileTrajectory(v0, angle, i * timeStep);
+				mTrajectory[i].get()->SetPosition({ x, y, 0.f });
+			}
+			mRenderTrajectory = true;
+		}
 	}
 }
 
@@ -258,6 +304,7 @@ void Logic::DuFresne()
 	fc.BeginFrame(window.Gfx());
 
 	mGoal->Update(dt, {0.f, 0.f, 0.f});
+	
 	if (shadowPass)
 	{
 		ShadowPass(transform, transform2);
@@ -266,6 +313,18 @@ void Logic::DuFresne()
 	{
 		RenderPass(transform, transform2);
 	}
+
+	if (mRenderTrajectory)
+	{
+		for (size_t i = 0; i < mTrajectory.size(); i++)
+		{
+			mTrajectory[i].get()->Draw(window.Gfx());
+		}
+	}
+	mBall->SetPosition(XMVECTOR{ 0.f, 0.f, 0.f });
+	mBall->Draw(window.Gfx());
+	mGoal->Draw(window.Gfx());
+
 	if (drawAxes)
 	{
 		for (UINT i = 0; i<drawables.size(); i++)
@@ -273,9 +332,6 @@ void Logic::DuFresne()
 			drawables[i].get()->Update(0.f, { 0.f, 0.f, 0.f });
 			drawables[i].get()->Draw(window.Gfx());
 		}
-		mBall->SetPosition(XMVECTOR{0.f, 0.f, 0.f});
-		mBall->Draw(window.Gfx());
-		mGoal->Draw(window.Gfx());
 	}
 	if (revolve)
 	{
