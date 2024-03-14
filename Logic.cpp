@@ -193,70 +193,31 @@ void Logic::BallControl()
 			mAim.get()->SetDirection(direction);
 			mGoal->SetPosition(target);
 		}
-		static float aimXZ = 0.f, aimY = 0.f, imguiAimXZ = 0.f, imguiAimY = 0.f;
-		static float radius = 1000.f;
-		ImGui::Text("Aim");
-		ImGui::SliderFloat("angleXZ", &imguiAimXZ, -180.0f, 180.0f);
-		ImGui::SliderFloat("aimY", &imguiAimY, -180.0f, 180.0f);
-		aimXZ = -imguiAimXZ;
-		aimY = imguiAimY;
-		// Button to reset aim towards goal
+
+		// set ball position as coordinate origin
+		auto nX = goalPosition.x - ballPosition.x;
+		auto nY = goalPosition.y - ballPosition.y;
+		auto nZ = goalPosition.z - ballPosition.z;
+		// calculate rotational angles towards goal
+		auto angleXZplane = atan2f(nX, nZ);
+		auto x = sqrtf(nX * nX + nZ * nZ);
+		auto y = nY;
+		auto hyp = sqrtf(x * x + y + y);
+		auto AngleYXplane = -atan2f(y, x);
+		// Set Aim
+		static float rightLeft = 0.f, upDown = 0.f;
+		ImGui::Text("TestAim");
+		ImGui::SliderFloat("RightLeft", &rightLeft, -180.0f, 180.0f);
+		ImGui::SliderFloat("UpDown", &upDown, 0.0f, 90.0f);
 		if (ImGui::Button("Aim Towards Goal"))
 		{
-			imguiAimXZ = imguiAimY = 0.f;
+			rightLeft = upDown = 0.f;
 		}
-
-		// calculate where the aim position is based on the aim
-		static float aimPosX = goalPosition.x, aimPosY = goalPosition.y, aimPosZ = goalPosition.z;
-		{
-			float normX = goalPosition.x - ballPosition.x;
-			float normZ = goalPosition.z - ballPosition.z;
-			float distBallToGoal = sqrtf((normX * normX) + (normZ * normZ));
-			if (normZ == 0.f) // Division with zero guard
-				normZ = 0.01f;
-			float angleA = atan2f(normZ, normX);
-			float angleB = deg_rad(aimXZ);
-			float newX = cosf(angleA + angleB) * distBallToGoal;
-			float newZ = sinf(angleA + angleB) * distBallToGoal;
-			aimPosX = ballPosition.x + newX;
-			aimPosZ = ballPosition.z + newZ;
-
-			aimPosY = goalPosition.y + sinf(deg_rad(aimY)) * 100.f;
-		}
-		
-		// dist to ball
-		static float distanceBallToGoal;
-		{
-			XMVECTOR gp = XMLoadFloat3(&goalPosition);
-			XMVECTOR difference = XMVectorSubtract(bp, gp);
-			XMVECTOR distanceSquared = XMVector3LengthSq(difference);
-			distanceBallToGoal = sqrtf(XMVectorGetX(distanceSquared));
-		}
-
-		DirectX::XMVECTOR target = DirectX::XMVectorSet(aimPosX, aimPosY, aimPosZ, 0.0f);
-		DirectX::XMVECTOR direction = DirectX::XMVectorSubtract(target, bp);
-		direction = DirectX::XMVector3Normalize(direction);
-		mAim.get()->SetDirection(direction);
-		{
-			// set ball position as coordinate origin
-			auto nX = goalPosition.x - ballPosition.x;
-			auto nY = goalPosition.y - ballPosition.y;
-			auto nZ = goalPosition.z - ballPosition.z;
-			
-			auto angleXZplane = atan2f(nX, nZ);
-			auto x = sqrtf(nX * nX + nZ * nZ);
-			auto y = nY;
-			auto hyp = sqrtf(x * x + y + y);
-			auto AngleYXplane = -atan2f(y, x);
-
-			static float tPitch = 0.f, tRoll = 0.f;
-			ImGui::Text("TestAim");
-			ImGui::SliderFloat("tPitch", &tPitch, -180.0f, 180.0f);
-			ImGui::SliderFloat("tYaw", &tRoll, -180.0f, 180.0f);
-			
-			auto rot = XMVECTOR{ AngleYXplane - deg_rad(tRoll), angleXZplane+deg_rad(tPitch), 0.f };
-			mAim.get()->SetRotation(rot);
-		}
+		// Apply aim
+		auto roll = std::clamp(AngleYXplane - deg_rad(upDown), -deg_rad(90.f), 0.f);
+		auto pitch = angleXZplane + deg_rad(rightLeft);
+		auto rot = XMVECTOR{ roll, pitch, 0.f };
+		mAim.get()->SetRotation(rot);
 	}
 }
 

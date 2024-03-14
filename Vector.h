@@ -72,30 +72,20 @@ public:
 	{
 		using namespace DirectX;
 
-		XMVECTOR scale = XMLoadFloat3(&mScale);
-		XMVECTOR position = XMLoadFloat3(&mPosition);
-		XMVECTOR normalizedDir = XMVector3Normalize(XMLoadFloat3(&mDirection));
-
-		// Create the rotation part of the matrix
-		XMVECTOR up = XMVectorSet(.0f, 1.0f, 0.0f, 0.0f);
-		XMVECTOR rotationQuaternion = DirectX::XMQuaternionRotationMatrix(DirectX::XMMatrixLookToLH(DirectX::g_XMZero, normalizedDir, up));
-		XMMATRIX rotationMatrix = XMMatrixTranspose(XMMatrixRotationQuaternion(rotationQuaternion));
-		
-		// Create the scaling part of the matrix
-		XMMATRIX scalingMatrix = XMMatrixScalingFromVector(scale);
-
 		for (size_t i = 0; i < power; i++)
 		{
-			XMVECTOR translation = XMVectorScale(normalizedDir, static_cast<float>(i) * 3.0f); // Calculate translation vector
-			XMVECTOR newPosition = XMVectorAdd(position, translation);
-			XMMATRIX translationMatrix = XMMatrixTranslationFromVector(newPosition);
+			float length = static_cast<float>(i) * 3.0f;
+			auto xzLen = fabs(cosf(mRotation.x) * length);
+			XMVECTOR pwrTranslation = XMVECTOR{ sinf(mRotation.y)*xzLen, -sinf(mRotation.x)*length, cosf(mRotation.y)*xzLen };
 			
-			XMMATRIX tf = scalingMatrix * rotationMatrix * translationMatrix;
-
+			XMVECTOR newPosition = XMVectorAdd(XMLoadFloat3(&mPosition), pwrTranslation);
 			XMMATRIX s = XMMatrixScalingFromVector(XMLoadFloat3(&mScale));
 			XMMATRIX r = XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&mRotation));
 			XMMATRIX t = XMMatrixTranslationFromVector(XMLoadFloat3(&mPosition));
-			tf = s * r * t;
+
+			XMMATRIX pt = XMMatrixTranslationFromVector(pwrTranslation);
+			XMMATRIX tf = s * r * t;
+			tf = tf * pt;
 			meshPtrs[i]->Draw(gfx, tf);
 		}
 	}
