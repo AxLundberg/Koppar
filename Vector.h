@@ -91,6 +91,11 @@ public:
 			XMMATRIX translationMatrix = XMMatrixTranslationFromVector(newPosition);
 			
 			XMMATRIX tf = scalingMatrix * rotationMatrix * translationMatrix;
+
+			XMMATRIX s = XMMatrixScalingFromVector(XMLoadFloat3(&mScale));
+			XMMATRIX r = XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&mRotation));
+			XMMATRIX t = XMMatrixTranslationFromVector(XMLoadFloat3(&mPosition));
+			tf = s * r * t;
 			meshPtrs[i]->Draw(gfx, tf);
 		}
 	}
@@ -105,10 +110,6 @@ public:
 	{
 		return mPosition;
 	}
-	void SetRotation(DirectX::XMMATRIX& dir)
-	{
-		DirectX::XMStoreFloat4x4(&mRotation, dir);
-	}
 	void SetDirection(DirectX::XMVECTOR& dir)
 	{
 		DirectX::XMStoreFloat3(&mDirection, dir);
@@ -120,6 +121,10 @@ public:
 	void SetPosition(DirectX::XMVECTOR& pos)
 	{
 		DirectX::XMStoreFloat3(&mPosition, pos);
+	}
+	void SetRotation(DirectX::XMVECTOR& rot)
+	{
+		DirectX::XMStoreFloat3(&mRotation, rot);
 	}
 	void SetPower(float force)
 	{
@@ -133,7 +138,7 @@ private:
 	DirectX::XMFLOAT3 mScale;
 	DirectX::XMFLOAT3 mPosition;
 	DirectX::XMFLOAT3 mDirection;
-	DirectX::XMFLOAT4X4 mRotation;
+	DirectX::XMFLOAT3 mRotation;
 	int power = 4;
 private:
 	std::vector<std::unique_ptr<Vecmesh>> meshPtrs;
