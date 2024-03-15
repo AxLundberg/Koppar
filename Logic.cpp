@@ -29,7 +29,7 @@ Logic::Logic()
 	class Factory
 	{
 	public:
-		Factory(Graphics& gfx, std::wstring heightmap, float divX, float divZ, float width, float height)
+		Factory(Graphics& gfx)
 			:
 			gfx(gfx)
 		{}
@@ -109,7 +109,7 @@ Logic::Logic()
 		int type = 0;
 	};
 	using namespace DirectX;
-	Factory f(window.Gfx(), heightmap, divX, divZ, width, height);
+	Factory f(window.Gfx());
 	drawables.reserve(nDrawables);
 	std::generate_n(std::back_inserter(drawables), nDrawables, f);
 	
@@ -150,11 +150,17 @@ Logic::Logic()
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(12.0f, 12.0f, 12.0f))));
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, 12.0f))));
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, -12.0f))));
-	for (size_t i = 0; i < 50; i++)
+	const float trajectoryBallRadius = 0.2f;
+	const XMFLOAT3 initLocation = { 0.0f, 0.0f, 0.0f };
+	for (size_t i = 0; i < N_TRAJECTORY_STEPS; i++)
 	{
-
-		DirectX::XMFLOAT3 col = { 1.f - 0.75f * i/50, 0.2f, 0.2f};
-		mTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), 0.2f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, col));
+		const DirectX::XMFLOAT3 col = { 1.f - 0.65f * i/50, 0.2f, 0.2f};
+		mTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
+	}
+	for (size_t i = 0; i < N_COLLISION_INDICATORS; i++)
+	{
+		const DirectX::XMFLOAT3 col = { 0.f, 0.8f, 0.2f };
+		mCollisionIndicators.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
 	}
 }
 
@@ -281,9 +287,6 @@ void Logic::SpawnGolfGoal(DirectX::XMFLOAT3& location)
 void Logic::SetGoalPathGuide(DirectX::XMVECTOR bp, DirectX::XMVECTOR gp)
 {
 	using namespace DirectX;
-	static constexpr float ADDITIONAL_HEIGHT = 5.f;
-	// change source pos from ball position to slightly elevated above ballposition
-	bp = XMVectorAdd(bp, {0.f, ADDITIONAL_HEIGHT, 0.f});
 	// set scale according to distance between ball and goal
 	DirectX::XMVECTOR diff = XMVectorSubtract(gp, bp);
 	float distance = XMVectorGetX(XMVector3Length(diff));
@@ -363,20 +366,6 @@ void Logic::DuFresne()
 		RenderPass(transform, transform2);
 	}
 
-	if (mRenderTrajectory)
-	{
-		for (size_t i = 0; i < mTrajectory.size(); i++)
-		{
-			mTrajectory[i].get()->Draw(window.Gfx());
-		}
-	}
-	if (mRenderPathToGoal)
-	{
-		mPathToGoal.get()->Draw(window.Gfx());
-	}
-	mBall->Draw(window.Gfx());
-	mGoal->Draw(window.Gfx());
-
 	if (drawAxes)
 	{
 		for (UINT i = 0; i<drawables.size(); i++)
@@ -407,17 +396,35 @@ void Logic::DuFresne()
 		fc.BindFilter(window.Gfx());
 		mRTSheet.get()->Draw(window.Gfx());
 	}
+	
+	// GOLF AIM and GUIDE PATH rendered here to not be culled
 	{
-		DirectX::XMVECTOR position = DirectX::XMVectorSet(1, 1, 1, 1); // (0, 10, 0)
-		DirectX::XMVECTOR direction = DirectX::XMVectorSet(1, 1, 1, 0); // (1, 0, 0)
-		DirectX::XMVECTOR scale = DirectX::XMVectorSet(1, 1, 1, 0); // (1, 1, 1)
-		//mBall.get()->SetPosition(position);
-		//mBall.get()->SetDirection(direction);
-		mAim.get()->SetScale(scale);
 		mAim.get()->Draw(window.Gfx());
+		mBall->Draw(window.Gfx());
+		if (mRenderPathToGoal)
+		{
+			mPathToGoal.get()->Draw(window.Gfx());
+		}
+		if (mRenderTrajectory)
+		{
+			for (size_t i = 0; i < mTrajectory.size(); i++)
+			{
+				auto pos = mTrajectory[i].get()->GetPosition();
+				auto terrainHeightAtPos = GetHeight(pos);
+				// Check if trajectory collides with terrain
+				if (pos.y < terrainHeightAtPos)
+				{
+					// render collision ball at impact location
+					mCollisionIndicators[0]->SetPosition({ pos.x, terrainHeightAtPos, pos.z });
+					mCollisionIndicators[0]->Draw(window.Gfx());
+					break; // only want to render the path that is above the terrain, so we break
+				}
+				mTrajectory[i].get()->Draw(window.Gfx());
+			}
+		}
+		mGoal->Draw(window.Gfx());
 	}
 	
-
 	light.SpawnControlWindow();
 	mCameras.SpawnControlWindow();
 	skelleBoi->SpawnControlWindow();
@@ -713,7 +720,7 @@ void Logic::Control()
 	{
 		mCameras.GetCamera().FPRotation((float)window.moose.GetPosX(), (float)window.moose.GetPosY(), 1200, 900);
 
-		if (window.keyboard.KeyPressed(VK_SPACE) && cooldown_frame > 10u && campos.x < width && campos.y < height)
+		if (window.keyboard.KeyPressed(VK_SPACE) && cooldown_frame > 10u && campos.x < MAP_WIDTH && campos.y < MAP_HEIGHT)
 		{
 			cooldown_frame = 0u;
 			glue ^= true;
@@ -728,7 +735,7 @@ void Logic::Control()
 	}
 	if ((window.keyboard.KeyPressed('W') || window.keyboard.KeyPressed('A') || window.keyboard.KeyPressed('S') || window.keyboard.KeyPressed('D')))
 	{
-		if (abs(campos.x) >= width/2 - 5 or abs(campos.z) >= height/2 - 5)
+		if (abs(campos.x) >= MAP_WIDTH/2 - 5 or abs(campos.z) >= MAP_HEIGHT/2 - 5)
 		{
 			glue = false;
 		}
@@ -801,8 +808,8 @@ void Logic::SetHeightMap() noexcept
 	delete[] bitmapImage;
 
 	// Create height map with pixel data
-	float vx = (divX<2) ? 2.0f : divX;
-	float vy = (divZ<2) ? 2.0f : divZ;
+	float vx = (MAP_DIV_X<2) ? 2.0f : MAP_DIV_X;
+	float vy = (MAP_DIV_Z<2) ? 2.0f : MAP_DIV_Z;
 
 	//Kernel radii
 	int reach = mReach;
@@ -854,7 +861,7 @@ void Logic::SetHeightMap() noexcept
 		for (size_t j = 0; j < vx; j++)
 		{
 			int posX = int(j*npx_w/vx);
-			row.push_back(CalculateHeight2(posX, posY) / heightAttenuation);
+			row.push_back(CalculateHeight2(posX, posY) / MAP_HEIGHT_ATTENUATION);
 		}
 		height_map.push_back(row);
 	}
@@ -862,12 +869,12 @@ void Logic::SetHeightMap() noexcept
 
 float Logic::GetHeight(DirectX::XMFLOAT3 pos)
 {
-	float sideZ = height/2;
-	float sideX = width/2;
+	float sideZ = MAP_HEIGHT/2;
+	float sideX = MAP_WIDTH/2;
 
 	//camera positions correlated to heightmap position
-	float sampleZ = (pos.z + sideZ)/(height/(divZ));
-	float sampleX = (pos.x + sideX)/(width/(divX));
+	float sampleZ = (pos.z + sideZ)/(MAP_HEIGHT/(MAP_DIV_X));
+	float sampleX = (pos.x + sideX)/(MAP_WIDTH/(MAP_DIV_Z));
 
 	//heightmap Sample 'coordinates'
 	float lowZ  = floor(sampleZ);

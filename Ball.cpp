@@ -83,6 +83,10 @@ void Ball::SetRotation(DirectX::XMFLOAT3 pos) noexcept
 {
 	mPosition = pos;
 }
+DirectX::XMFLOAT3 Ball::GetPosition() noexcept
+{
+	return mPosition;
+}
 
 std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> Ball::GetBoundingBox() const noexcept
 {

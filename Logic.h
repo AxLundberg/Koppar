@@ -36,11 +36,11 @@ private:
 	void BallControl();
 private:
 	//heightmap variables
-	static constexpr float divX = 499.0f;
-	static constexpr float divZ = 499.0f;
-	static constexpr float width = 400.0f;
-	static constexpr float height = 400.0f;
-	static constexpr float heightAttenuation = 10.0f;
+	static constexpr float MAP_DIV_X = 499.0f;
+	static constexpr float MAP_DIV_Z = 499.0f;
+	static constexpr float MAP_WIDTH = 400.0f;
+	static constexpr float MAP_HEIGHT = 400.0f;
+	static constexpr float MAP_HEIGHT_ATTENUATION = 10.0f;
 	static constexpr int mReach = 4;
 	const std::wstring heightmap = L"Textures\\meteormap";
 	//misc
@@ -59,6 +59,7 @@ private:
 
 	//------------ GOLF CODE --------------
 	static constexpr int N_TRAJECTORY_STEPS = 50;
+	static constexpr int N_COLLISION_INDICATORS = 5;
 
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
@@ -68,6 +69,7 @@ private:
 	bool mStartGolf = true;
 	bool mRenderTrajectory = true;
 	bool mRenderPathToGoal = false;
+	std::vector<std::unique_ptr<Ball>> mCollisionIndicators = {};
 	std::vector<std::unique_ptr<Ball>> mTrajectory = {};
 	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), .5f, DirectX::XMFLOAT3{ .0f, .0f, .0f}, DirectX::XMFLOAT3{ 0.9f, 0.9f, 0.9f});
 	std::unique_ptr<Ball> mTest2 = std::make_unique<Ball>(window.Gfx(), 5.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f});
@@ -93,7 +95,7 @@ private:
 	std::unique_ptr<ModelAi> skelleBoi2 = std::make_unique<ModelAi>(window.Gfx(), "Boblampclean", false, 0.1f );
 	//std::unique_ptr<Model> mBox = std::make_unique<Model>(window.Gfx(), L"Crate1", false, 0.5f );
 	std::unique_ptr<Terrain> mTerrain = std::make_unique<Terrain>( window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f },
-		mReach, heightAttenuation, divX, divZ,  width, height, heightmap);
+		mReach, MAP_HEIGHT_ATTENUATION, MAP_DIV_X, MAP_DIV_Z,  MAP_WIDTH, MAP_HEIGHT, heightmap);
 
 	std::unique_ptr<TestPlane> mTestPlane = std::make_unique<TestPlane>( window.Gfx(), L"vecVS.cso", L"vecPS.cso", DirectX::XMMatrixTranslation(0.0f, 25.0f, -15.0f), 19.0f, 10.0f );
 	std::unique_ptr<TestPlane> mTestPlane2 = std::make_unique<TestPlane>( window.Gfx(), L"shademeVS.cso", L"shademePS.cso", DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f), 50.0f, 50.0f );

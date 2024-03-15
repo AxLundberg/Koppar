@@ -14,6 +14,7 @@ public:
 	DirectX::XMFLOAT3 GetRotation() const noexcept override;
 	void SetPosition(DirectX::FXMVECTOR pos) noexcept;
 	void SetRotation(DirectX::XMFLOAT3 rot) noexcept;
+	DirectX::XMFLOAT3 GetPosition() noexcept;
 private:
 	//color
 	DirectX::XMFLOAT3 mColor;
