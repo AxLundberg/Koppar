@@ -26,6 +26,7 @@ public:
 	void Change_ImGuiWnd() noexcept;
 	void SetHeightMap() noexcept;
 	float GetHeight(DirectX::XMFLOAT3 pos);
+	DirectX::XMVECTOR GetHeightMapPlane(float x, float z);
 	void Control();
 	~Logic();
 private:
