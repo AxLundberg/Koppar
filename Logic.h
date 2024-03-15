@@ -59,8 +59,9 @@ private:
 
 	static constexpr int N_TRAJECTORY_STEPS = 50;
 	bool mRenderTrajectory = true;
+	bool mRenderPathToGoal = false;
 	std::vector<std::unique_ptr<Ball>> mTrajectory = {};
-	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), 5.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 0.8f, 0.8f, 0.8f});
+	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), 1.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 0.8f, 0.8f, 0.8f});
 	std::unique_ptr<Ball> mTest2 = std::make_unique<Ball>(window.Gfx(), 5.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f});
 	std::unique_ptr<Vector> mAim = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
 	std::unique_ptr<Cylinder> mGoal = std::make_unique<Cylinder>(window.Gfx(),
@@ -69,7 +70,12 @@ private:
 		DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f },
 		DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }
 	);
-
+	std::unique_ptr<Cylinder> mPathToGoal = std::make_unique<Cylinder>(window.Gfx(),
+		DirectX::XMFLOAT3{ 11.5f, 1.0f, 0.0f },
+		DirectX::XMFLOAT3{ 0.f, 0.f, 0.f },
+		DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f },
+		DirectX::XMFLOAT3{ .8f, .2f, .8f }
+	);
 	std::unique_ptr<Sheet> mRTSheet = std::make_unique<Sheet>(window.Gfx(), L"fullscreenVS.cso", L"fullscreenPS.cso" );
 	std::unique_ptr<Sheet> mDSSheet = std::make_unique<Sheet>(window.Gfx(), L"depthVS.cso", L"depthPS.cso" );
 	//std::unique_ptr<Model> cottage = std::make_unique<Model>(window.Gfx(), L"cottage2_obj", false, 1.0f );

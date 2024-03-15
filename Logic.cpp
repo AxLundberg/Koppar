@@ -174,7 +174,7 @@ float ImpactT(float y0, float v0, float angle)
 	float q = c / a;
 	float t1 = -p/2 + sqrtf(((p * p) / 4) - q);
 	float t2 = -p/2 - sqrtf(((p * p) / 4) - q);
-	return t1;
+	return t1 > t2 ? t1 : t2;
 }
 
 std::pair<float, float> ProjectileTrajectory(float initSpeed, float angle, float t)
@@ -188,6 +188,25 @@ std::pair<float, float> ProjectileTrajectory(float initSpeed, float angle, float
 	return { length, height };
 }
 
+std::pair<float, float> RollPitchFromTo(DirectX::XMVECTOR src, DirectX::XMVECTOR dest)
+{
+	// Calculate the vector from source to destination
+	DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(dest, src);
+
+	// Extract the components of the vector
+	float nX, nY, nZ;
+	nX = DirectX::XMVectorGetX(diff);  // Store X component of the vector
+	nY = DirectX::XMVectorGetY(diff);  // Store Y component of the vector
+	nZ = DirectX::XMVectorGetZ(diff);  // Store Z component of the
+	// calculate rotational angles towards destination
+	auto angleXZplane = atan2f(nX, nZ);
+	auto x = sqrtf(nX * nX + nZ * nZ);
+	auto y = nY;
+	auto hyp = sqrtf(x * x + y + y);
+	auto angleYXplane = -atan2f(y, x);
+	return { angleYXplane, angleXZplane };
+}
+
 void Logic::BallControl()
 {
 	ImGui::End();
@@ -197,44 +216,32 @@ void Logic::BallControl()
 		using namespace DirectX;
 		using namespace std::string_literals;
 
-		static XMFLOAT3 imguiBallPos = {0.f, 0.f, 0.f};
-		static XMFLOAT3 ballPosition = { 0.f, 0.f, 0.f };
-		static XMVECTOR bp = XMLoadFloat3(&ballPosition);
+		static XMFLOAT3 ballPos, imguiBallPos = { 0.f, 0.f, 0.f };
+		static XMVECTOR bp = XMLoadFloat3(&imguiBallPos);
 		ImGui::Text("BallPos");
 		ImGui::SliderFloat3("BallPos", reinterpret_cast<float*>(&imguiBallPos), -180.f, 180.f, "%.2f");
 
-		if (ImGui::Button("SpawnBall")){
-			ballPosition = imguiBallPos;
-			bp = XMLoadFloat3(&ballPosition);
+		if (ImGui::Button("SpawnBall")) {
+			ballPos = imguiBallPos;
+			bp = XMLoadFloat3(&ballPos);
 			mAim.get()->SetPosition(bp);
 			mBall.get()->SetPosition(bp);
 		}
 
-		static XMFLOAT3 imguiGoalPos = { 15.f, 0.f, 15.f };
-		static XMFLOAT3 goalPosition = imguiGoalPos;
+		static XMFLOAT3 goalPos, imguiGoalPos = { 15.f, 15.f, 15.f };
+		static XMVECTOR gp = XMLoadFloat3(&imguiGoalPos);
 		ImGui::Text("GoalPos");
 		ImGui::SliderFloat3("GoalPos", reinterpret_cast<float*>(&imguiGoalPos), -180.f, 180.f, "%.2f");
 
 		if (ImGui::Button("SetGoal"))
 		{
-			goalPosition = imguiGoalPos;
-			XMVECTOR target = XMLoadFloat3(&goalPosition);
-			XMVECTOR direction = XMVectorSubtract(target, bp);
-			direction = XMVector3Normalize(direction);
-			mAim.get()->SetDirection(direction);
-			mGoal->SetPosition(target);
+			goalPos = imguiGoalPos;
+			gp = XMLoadFloat3(&imguiGoalPos);
+			mGoal->SetPosition(gp);
 		}
 
-		// set ball position as coordinate origin
-		auto nX = goalPosition.x - ballPosition.x;
-		auto nY = goalPosition.y - ballPosition.y;
-		auto nZ = goalPosition.z - ballPosition.z;
-		// calculate rotational angles towards goal
-		auto angleXZplane = atan2f(nX, nZ);
-		auto x = sqrtf(nX * nX + nZ * nZ);
-		auto y = nY;
-		auto hyp = sqrtf(x * x + y + y);
-		auto AngleYXplane = -atan2f(y, x);
+		// Get angles towards goal
+		auto [roll, pitch] = RollPitchFromTo(bp, gp);
 		// Set Aim
 		static float rightLeft = 0.f, upDown = 0.f;
 		ImGui::Text("Aim");
@@ -242,12 +249,12 @@ void Logic::BallControl()
 		ImGui::SliderFloat("UpDown", &upDown, 0.0f, 90.0f);
 		if (ImGui::Button("Aim Towards Goal"))
 		{
-			rightLeft = upDown = 0.f;
+			rightLeft = 0.f;
+			upDown = -rad_deg(std::clamp(roll, -PI / 2, 0.f));;
 		}
+		
 		// Apply aim
-		auto roll = std::clamp(AngleYXplane - deg_rad(upDown), -deg_rad(90.f), 0.f);
-		auto pitch = angleXZplane + deg_rad(rightLeft);
-		auto rot = XMVECTOR{ roll, pitch, 0.f };
+		auto rot = XMVECTOR{ -deg_rad(upDown), pitch + deg_rad(rightLeft), 0.f };
 		mAim.get()->SetRotation(rot);
 
 		// tmp init velocity slider
@@ -255,14 +262,24 @@ void Logic::BallControl()
 		ImGui::Text("TmpInitVelocitySlider");
 		ImGui::SliderFloat("initVelocity", &initVelocity, 0.0f, 90.0f);
 
-		if (ImGui::Button("Trajectory"))
+		mRenderTrajectory ^= ImGui::Button("Trajectory");
+		mRenderPathToGoal ^= ImGui::Button("GoalGuide");
 		{
-			mRenderTrajectory = true;
+			// set scale according to distance between ball and goal
+			DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(gp, bp);
+			float distance = DirectX::XMVectorGetX(DirectX::XMVector3Length(diff));
+			mPathToGoal.get()->SetScale(XMVECTOR{ .1f, .1f, distance/2.f });
+			// rotate path towards goal
+			mPathToGoal.get()->SetRotation(XMVECTOR{ roll, pitch, 0.f });
+			// set position in the middle between ball pos and goal pos
+			XMVECTOR pathPos = { ballPos.x + goalPos.x, ballPos.y + goalPos.y, ballPos.z + goalPos.z };
+			pathPos = XMVectorScale(pathPos, 0.5f);
+			mPathToGoal.get()->SetPosition(pathPos);
 		}
 		if (mRenderTrajectory)
 		{
-			float angle = -roll;
-			float it = ImpactT(0, initVelocity, angle);
+			float angle = deg_rad(upDown);
+			float it = ImpactT(ballPos.y, initVelocity, angle);
 			float timeStep = it / N_TRAJECTORY_STEPS;
 			size_t nStep = N_TRAJECTORY_STEPS;
 			for (size_t i = 0; i < nStep; i++)
@@ -270,10 +287,11 @@ void Logic::BallControl()
 				auto [x, y] = ProjectileTrajectory(initVelocity, angle, i * timeStep);
 
 				float dist = sqrtf(x * x + y * y);
-				float newX = ballPosition.x + x * sinf(pitch);
-				float newZ = ballPosition.y + x * cosf(pitch);
+				float newX = ballPos.x + x * sinf(pitch+ deg_rad(rightLeft));
+				float newY = ballPos.y + y;
+				float newZ = ballPos.z + x * cosf(pitch+ deg_rad(rightLeft));
 
-				mTrajectory[i].get()->SetPosition({ newX, y, newZ });
+				mTrajectory[i].get()->SetPosition({ newX, newY, newZ });
 			}
 		}
 	}
@@ -332,6 +350,10 @@ void Logic::DuFresne()
 		{
 			mTrajectory[i].get()->Draw(window.Gfx());
 		}
+	}
+	if (mRenderPathToGoal)
+	{
+		mPathToGoal.get()->Draw(window.Gfx());
 	}
 	mBall->SetPosition(XMVECTOR{ 0.f, 0.f, 0.f });
 	mBall->Draw(window.Gfx());
