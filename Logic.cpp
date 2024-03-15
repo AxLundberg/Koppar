@@ -131,13 +131,8 @@ Logic::Logic()
 	auto nParticles = 256u;
 	pSys.nParticles = nParticles;
 
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_1.jpg"));
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_2.jpg"));
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_3.jpg"));
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_4.jpg"));
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_5.jpg"));
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_6.jpg"));
-	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_8.jpg"));
+	mSkyboxes.push_back(std::make_unique<Box>(window.Gfx(), L"Textures\\skybox_1.png"));
+	
 
 	//frustrum.AddDrawables(std::move(std::make_unique<PortalWall>(window.Gfx(),
 	//	XMFLOAT3{ -10.0f, 10.0f, 0.01f }, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, 20.0f, 20.0f, 10.0f, 10.0f, L"crystal")));
@@ -218,26 +213,25 @@ void Logic::BallControl()
 
 		static XMFLOAT3 ballPos, imguiBallPos = { 0.f, 0.f, 0.f };
 		static XMVECTOR bp = XMLoadFloat3(&imguiBallPos);
-		ImGui::Text("BallPos");
+		ImGui::Text("Ball position");
 		ImGui::SliderFloat3("BallPos", reinterpret_cast<float*>(&imguiBallPos), -180.f, 180.f, "%.2f");
 
-		if (ImGui::Button("SpawnBall")) {
+		if (ImGui::Button("Set Ball Position")) {
+			SpawnGolfBall(imguiBallPos);
 			ballPos = imguiBallPos;
 			bp = XMLoadFloat3(&ballPos);
-			mAim.get()->SetPosition(bp);
-			mBall.get()->SetPosition(bp);
 		}
 
 		static XMFLOAT3 goalPos, imguiGoalPos = { 15.f, 15.f, 15.f };
 		static XMVECTOR gp = XMLoadFloat3(&imguiGoalPos);
-		ImGui::Text("GoalPos");
+		ImGui::Text("Goal Position");
 		ImGui::SliderFloat3("GoalPos", reinterpret_cast<float*>(&imguiGoalPos), -180.f, 180.f, "%.2f");
 
-		if (ImGui::Button("SetGoal"))
+		if (ImGui::Button("Set Goal Position"))
 		{
+			SpawnGolfGoal(imguiGoalPos);
 			goalPos = imguiGoalPos;
 			gp = XMLoadFloat3(&imguiGoalPos);
-			mGoal->SetPosition(gp);
 		}
 
 		// Get angles towards goal
@@ -264,36 +258,61 @@ void Logic::BallControl()
 
 		mRenderTrajectory ^= ImGui::Button("Trajectory");
 		mRenderPathToGoal ^= ImGui::Button("GoalGuide");
-		{
-			// set scale according to distance between ball and goal
-			DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(gp, bp);
-			float distance = DirectX::XMVectorGetX(DirectX::XMVector3Length(diff));
-			mPathToGoal.get()->SetScale(XMVECTOR{ .1f, .1f, distance/2.f });
-			// rotate path towards goal
-			mPathToGoal.get()->SetRotation(XMVECTOR{ roll, pitch, 0.f });
-			// set position in the middle between ball pos and goal pos
-			XMVECTOR pathPos = { ballPos.x + goalPos.x, ballPos.y + goalPos.y, ballPos.z + goalPos.z };
-			pathPos = XMVectorScale(pathPos, 0.5f);
-			mPathToGoal.get()->SetPosition(pathPos);
-		}
-		if (mRenderTrajectory)
-		{
-			float angle = deg_rad(upDown);
-			float it = ImpactT(ballPos.y, initVelocity, angle);
-			float timeStep = it / N_TRAJECTORY_STEPS;
-			size_t nStep = N_TRAJECTORY_STEPS;
-			for (size_t i = 0; i < nStep; i++)
-			{
-				auto [x, y] = ProjectileTrajectory(initVelocity, angle, i * timeStep);
 
-				float dist = sqrtf(x * x + y * y);
-				float newX = ballPos.x + x * sinf(pitch+ deg_rad(rightLeft));
-				float newY = ballPos.y + y;
-				float newZ = ballPos.z + x * cosf(pitch+ deg_rad(rightLeft));
+		SetGoalPathGuide(bp, gp);
+		SetTrajectory(bp, deg_rad(upDown), pitch + deg_rad(rightLeft), initVelocity);
+	}
+}
 
-				mTrajectory[i].get()->SetPosition({ newX, newY, newZ });
-			}
-		}
+void Logic::SpawnGolfBall(DirectX::XMFLOAT3& location) 
+{
+	static constexpr float PEG_HEIGHT = 0.65f;
+	location.y = GetHeight(location) + PEG_HEIGHT;
+	auto ballPosition = DirectX::XMLoadFloat3(&location);
+	mBall->SetPosition(ballPosition);
+	mAim.get()->SetPosition(ballPosition);
+}
+void Logic::SpawnGolfGoal(DirectX::XMFLOAT3& location)
+{
+	location.y = GetHeight(location);
+	auto goalPosition = DirectX::XMLoadFloat3(&location);
+	mGoal->SetPosition(goalPosition);
+}
+void Logic::SetGoalPathGuide(DirectX::XMVECTOR bp, DirectX::XMVECTOR gp)
+{
+	using namespace DirectX;
+	static constexpr float ADDITIONAL_HEIGHT = 5.f;
+	// change source pos from ball position to slightly elevated above ballposition
+	bp = XMVectorAdd(bp, {0.f, ADDITIONAL_HEIGHT, 0.f});
+	// set scale according to distance between ball and goal
+	DirectX::XMVECTOR diff = XMVectorSubtract(gp, bp);
+	float distance = XMVectorGetX(XMVector3Length(diff));
+	mPathToGoal.get()->SetScale(XMVECTOR{ .1f, .1f, distance / 2.f });
+	// rotate path towards goal
+	auto [roll, pitch] = RollPitchFromTo(bp, gp);
+	mPathToGoal.get()->SetRotation(XMVECTOR{ roll, pitch, 0.f });
+	// set position in the middle between ball pos and goal pos
+	XMVECTOR pathPos = XMVectorAdd(bp, gp);
+	pathPos = XMVectorScale(pathPos, 0.5f);
+	mPathToGoal.get()->SetPosition(pathPos);
+}
+void Logic::SetTrajectory(DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity)
+{
+	using namespace DirectX;
+	float angle = horizontalAngle;
+	float it = ImpactT(XMVectorGetY(ballPos), initialVelocity, angle);
+	float timeStep = it / N_TRAJECTORY_STEPS;
+	size_t nStep = N_TRAJECTORY_STEPS;
+	for (size_t i = 0; i < nStep; i++)
+	{
+		auto [x, y] = ProjectileTrajectory(initialVelocity, angle, i * timeStep);
+
+		float dist = sqrtf(x * x + y * y);
+		float newX = XMVectorGetX(ballPos) + x * sinf(turnAngle);
+		float newY = XMVectorGetY(ballPos) + y;
+		float newZ = XMVectorGetZ(ballPos) + x * cosf(turnAngle);
+
+		mTrajectory[i].get()->SetPosition({ newX, newY, newZ });
 	}
 }
 
@@ -355,7 +374,6 @@ void Logic::DuFresne()
 	{
 		mPathToGoal.get()->Draw(window.Gfx());
 	}
-	mBall->SetPosition(XMVECTOR{ 0.f, 0.f, 0.f });
 	mBall->Draw(window.Gfx());
 	mGoal->Draw(window.Gfx());
 
@@ -724,7 +742,7 @@ void Logic::Control()
 		if (window.keyboard.KeyPressed('D'))
 			schmovement.x += (glue) ? ground_v : fly_v;
 		if (glue)
-			mCameras.GetCamera().FPMoveGrav(schmovement, GetHeight(mCameras.GetCamera("Main Camera").GetPosition(), divX, divZ, width, height));
+			mCameras.GetCamera().FPMoveGrav(schmovement, GetHeight(mCameras.GetCamera("Main Camera").GetPosition()));
 		else
 			mCameras.GetCamera().FPMove(schmovement);
 	}	
@@ -842,7 +860,7 @@ void Logic::SetHeightMap() noexcept
 	}
 }
 
-float Logic::GetHeight(DirectX::XMFLOAT3 pos, float divX, float divZ, float width, float height)
+float Logic::GetHeight(DirectX::XMFLOAT3 pos)
 {
 	float sideZ = height/2;
 	float sideX = width/2;

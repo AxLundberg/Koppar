@@ -25,7 +25,7 @@ public:
 	float check_t();
 	void Change_ImGuiWnd() noexcept;
 	void SetHeightMap() noexcept;
-	float GetHeight(DirectX::XMFLOAT3 pos, float divX, float divY, float width, float height);
+	float GetHeight(DirectX::XMFLOAT3 pos);
 	void Control();
 	~Logic();
 private:
@@ -36,13 +36,13 @@ private:
 	void BallControl();
 private:
 	//heightmap variables
-	float divX = 499.0f;
-	float divZ = 499.0f;
-	float width = 400.0f;
-	float height = 400.0f;
-	float heightAttenuation = 10.0f;
-	int mReach = 4;
-	std::wstring heightmap = L"Textures\\map2";
+	static constexpr float divX = 499.0f;
+	static constexpr float divZ = 499.0f;
+	static constexpr float width = 400.0f;
+	static constexpr float height = 400.0f;
+	static constexpr float heightAttenuation = 10.0f;
+	static constexpr int mReach = 4;
+	const std::wstring heightmap = L"Textures\\meteormap";
 	//misc
 	ImguiController imgui;
 	Window window;
@@ -57,11 +57,19 @@ private:
 	std::vector<std::unique_ptr<class Particle>> mParticles = {};
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
+	//------------ GOLF CODE --------------
 	static constexpr int N_TRAJECTORY_STEPS = 50;
+
+	void SpawnGolfBall(DirectX::XMFLOAT3& location);
+	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
+	void SetGoalPathGuide(DirectX::XMVECTOR ballPos, DirectX::XMVECTOR goalPos);
+	void SetTrajectory(DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity);
+
+	bool mStartGolf = true;
 	bool mRenderTrajectory = true;
 	bool mRenderPathToGoal = false;
 	std::vector<std::unique_ptr<Ball>> mTrajectory = {};
-	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), 1.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 0.8f, 0.8f, 0.8f});
+	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), .5f, DirectX::XMFLOAT3{ .0f, .0f, .0f}, DirectX::XMFLOAT3{ 0.9f, 0.9f, 0.9f});
 	std::unique_ptr<Ball> mTest2 = std::make_unique<Ball>(window.Gfx(), 5.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f});
 	std::unique_ptr<Vector> mAim = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
 	std::unique_ptr<Cylinder> mGoal = std::make_unique<Cylinder>(window.Gfx(),
@@ -76,6 +84,8 @@ private:
 		DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f },
 		DirectX::XMFLOAT3{ .8f, .2f, .8f }
 	);
+	//-------------------------------------
+
 	std::unique_ptr<Sheet> mRTSheet = std::make_unique<Sheet>(window.Gfx(), L"fullscreenVS.cso", L"fullscreenPS.cso" );
 	std::unique_ptr<Sheet> mDSSheet = std::make_unique<Sheet>(window.Gfx(), L"depthVS.cso", L"depthPS.cso" );
 	//std::unique_ptr<Model> cottage = std::make_unique<Model>(window.Gfx(), L"cottage2_obj", false, 1.0f );
