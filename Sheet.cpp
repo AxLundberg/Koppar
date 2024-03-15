@@ -218,6 +218,11 @@ Sheet::Sheet(
 	);
 }
 
+void Sheet::SetPosition(DirectX::XMVECTOR p) noexcept
+{
+	DirectX::XMStoreFloat3(&pos, p);
+}
+
 void Sheet::Update(float dt, DirectX::XMFLOAT3 pos) noexcept
 {
 	/*roll += droll * dt;

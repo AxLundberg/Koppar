@@ -26,7 +26,7 @@ public:
 	void Change_ImGuiWnd() noexcept;
 	void SetHeightMap() noexcept;
 	float GetHeight(DirectX::XMFLOAT3 pos);
-	DirectX::XMVECTOR GetHeightMapPlane(float x, float z);
+	DirectX::XMVECTOR GetHeightMapPlane(DirectX::XMFLOAT3 pos);
 	void Control();
 	~Logic();
 private:
@@ -59,8 +59,9 @@ private:
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
 	//------------ GOLF CODE --------------
-	static constexpr int N_TRAJECTORY_STEPS = 50;
+	static constexpr int N_TRAJECTORY_STEPS = 100;
 	static constexpr int N_COLLISION_INDICATORS = 5;
+	std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
 
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);

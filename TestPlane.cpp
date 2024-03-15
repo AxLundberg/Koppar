@@ -83,12 +83,32 @@ void TestPlane::Update(float dt, DirectX::XMFLOAT3 inpos) noexcept
 
 DirectX::XMMATRIX TestPlane::GetTransformXM() const noexcept
 {
-	return DirectX::XMLoadFloat3x3(&modelTransform) *
-		DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f) *
-		DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f) *
-		DirectX::XMMatrixRotationRollPitchYaw(sin(rot.roll), rot.pitch, rot.yaw) *
-		DirectX::XMMatrixTranslation(pos.x, pos.y, pos.z);
+	return DirectX::XMLoadFloat3x3(&modelTransform);
 }
+void TestPlane::SetTransformFromPlane(DirectX::XMVECTOR plane)
+{
+	DirectX::XMVECTOR normal = DirectX::XMPlaneNormalize(plane);
+	float distance = DirectX::XMVectorGetW(plane);
+
+	// Calculate rotation to align normal with z-axis
+	DirectX::XMVECTOR zAxis = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	DirectX::XMVECTOR rotationAxis = DirectX::XMVector3Cross(zAxis, normal);
+	float rotationAngle = acosf(DirectX::XMVectorGetY(normal)); // Angle between normal and z-axis
+	DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationAxis(rotationAxis, rotationAngle);
+
+	// Calculate translation to move the plane to the origin
+	DirectX::XMVECTOR translation = DirectX::XMVectorNegate(DirectX::XMVectorScale(normal, distance));
+
+	// Combine rotation and translation matrices
+	DirectX::XMMATRIX transformation = rotation * DirectX::XMMatrixTranslationFromVector(translation);
+	DirectX::XMStoreFloat3x3(&modelTransform, transformation);
+}
+
+void TestPlane::SetPosition(DirectX::XMVECTOR p)
+{
+	DirectX::XMStoreFloat3(&pos, p);
+}
+
 
 std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> TestPlane::GetBoundingBox() const noexcept
 {

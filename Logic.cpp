@@ -154,7 +154,7 @@ Logic::Logic()
 	const XMFLOAT3 initLocation = { 0.0f, 0.0f, 0.0f };
 	for (size_t i = 0; i < N_TRAJECTORY_STEPS; i++)
 	{
-		const DirectX::XMFLOAT3 col = { 1.f - 0.65f * i/50, 0.2f, 0.2f};
+		const DirectX::XMFLOAT3 col = { 1.f - 0.65f * i/N_TRAJECTORY_STEPS, 0.2f, 0.2f};
 		mTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
 	}
 	for (size_t i = 0; i < N_COLLISION_INDICATORS; i++)
@@ -397,8 +397,15 @@ void Logic::DuFresne()
 		mRTSheet.get()->Draw(window.Gfx());
 	}
 	
-	// GOLF AIM and GUIDE PATH rendered here to not be culled
+	// SOME GOLF rendered here to not be culled
 	{
+		XMVECTOR A = { -5.f, 5.f, 0.f };
+		XMVECTOR B = { -5.f, 5.f, -5.f };
+		XMVECTOR C = { 0.f, 5.f, -5.f };
+		auto plane = XMPlaneFromPoints(C, B, A);
+		mGolfPlane->SetTransformFromPlane(plane);
+		mGolfPlane->Draw(window.Gfx());
+
 		mAim.get()->Draw(window.Gfx());
 		mBall->Draw(window.Gfx());
 		if (mRenderPathToGoal)
@@ -408,6 +415,7 @@ void Logic::DuFresne()
 		if (mRenderTrajectory)
 		{
 			mTrajectory[0].get()->Draw(window.Gfx());
+			
 			for (size_t i = 1; i < mTrajectory.size(); i++)
 			{
 				auto pos = mTrajectory[i].get()->GetPosition();
@@ -415,8 +423,13 @@ void Logic::DuFresne()
 				// Check if trajectory collides with terrain
 				if (pos.y < terrainHeightAtPos)
 				{
+					auto pos2 = mTrajectory[i - 1].get()->GetPosition();
+					auto intersectionPlane = GetHeightMapPlane(pos);
+					auto p2 = XMLoadFloat3(&pos2);
+					auto p1 = XMLoadFloat3(&pos);
+					auto res = XMPlaneIntersectLine(intersectionPlane, p1, p2);
 					// render collision ball at impact location
-					mCollisionIndicators[0]->SetPosition({ pos.x, terrainHeightAtPos, pos.z });
+					mCollisionIndicators[0]->SetPosition(res);
 					mCollisionIndicators[0]->Draw(window.Gfx());
 					break; // only want to render the path that is above the terrain, so we break
 				}
@@ -868,26 +881,31 @@ void Logic::SetHeightMap() noexcept
 	}
 }
 
-DirectX::XMVECTOR Logic::GetHeightMapPlane(float x, float z)
+DirectX::XMVECTOR Logic::GetHeightMapPlane(DirectX::XMFLOAT3 pos)
 {
+	float sideZ = MAP_HEIGHT / 2;
+	float sideX = MAP_WIDTH / 2;
+	// heightmap positions correlated to input pos
+	float sampleZ = (pos.z + sideZ) / (MAP_HEIGHT / (MAP_DIV_X));
+	float sampleX = (pos.x + sideX) / (MAP_WIDTH / (MAP_DIV_Z));
 	//heightmap Sample 'coordinates'
-	float lowZ = floor(z);
-	float highZ = floor(z + 1.0f);
-	float lowX = floor(x);
-	float highX = floor(x + 1.0f);
+	float lowZ = floor(sampleZ);
+	float highZ = floor(sampleZ + 1.0f);
+	float lowX = floor(sampleX);
+	float highX = floor(sampleX + 1.0f);
 
-	DirectX::XMVECTOR A = DirectX::XMVectorSet(highX, lowZ, height_map[(int)lowZ][(int)highX], 0.0f);
-	DirectX::XMVECTOR B = DirectX::XMVectorSet(lowX, highZ, height_map[(int)highZ][(int)lowX], 0.0f);
+	DirectX::XMVECTOR A = DirectX::XMVectorSet(highX, height_map[(int)lowZ][(int)highX], lowZ, 0.0f);
+	DirectX::XMVECTOR B = DirectX::XMVectorSet(lowX, height_map[(int)highZ][(int)lowX], highZ, 0.0f);
 	DirectX::XMVECTOR C = {};
 
 	//Determine last point from heightmap to use in construction of plane
-	if ((z - lowZ) >= (highX - x))
+	if ((sampleZ - lowZ) >= (highX - sampleX))
 	{
-		C = DirectX::XMVectorSet(highX, highZ, height_map[(int)highZ][(int)highX], 0.0f);
+		C = DirectX::XMVectorSet(highX, height_map[(int)highZ][(int)highX], highZ, 0.0f);
 	}
 	else
 	{
-		C = DirectX::XMVectorSet(lowX, lowZ, height_map[(int)lowZ][(int)lowX], 0.0f);
+		C = DirectX::XMVectorSet(lowX, height_map[(int)lowZ][(int)lowX], lowZ, 0.0f);
 	}
 	return DirectX::XMPlaneFromPoints(A, B, C);
 }
@@ -902,10 +920,10 @@ float Logic::GetHeight(DirectX::XMFLOAT3 pos)
 	float sampleX = (pos.x + sideX) / (MAP_WIDTH / (MAP_DIV_Z));
 
 	DirectX::XMFLOAT4 plane;
-	DirectX::XMStoreFloat4(&plane, GetHeightMapPlane(sampleX, sampleZ));
+	DirectX::XMStoreFloat4(&plane, GetHeightMapPlane(pos));
 
 	//Return the Height value corresponding to position on the plane
-	return (-plane.w - (sampleX*plane.x) - (sampleZ*plane.y))/plane.z;
+	return (-plane.w - (sampleX*plane.x) - (sampleZ*plane.z))/plane.y;
 }
 
 int Logic::Run()

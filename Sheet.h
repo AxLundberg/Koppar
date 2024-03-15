@@ -10,6 +10,8 @@ public:
 	DirectX::XMMATRIX GetTransformXM() const noexcept override;
 			std::pair<DirectX::XMFLOAT3, DirectX::XMFLOAT3> GetBoundingBox() const noexcept override;
 	DirectX::XMFLOAT3 GetRotation() const noexcept override;
+	void SetPosition(DirectX::XMVECTOR) noexcept;
+
 private:
 	//model scale transformation
 	DirectX::XMFLOAT3X3 modelTransform = {};
