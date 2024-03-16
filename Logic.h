@@ -41,7 +41,7 @@ private:
 	static constexpr float MAP_DIV_Z = 499.0f;
 	static constexpr float MAP_WIDTH = 400.0f;
 	static constexpr float MAP_HEIGHT = 400.0f;
-	static constexpr float MAP_HEIGHT_ATTENUATION = 10.0f;
+	static constexpr float MAP_HEIGHT_ATTENUATION = 1.0f;
 	static constexpr int mReach = 4;
 	const std::wstring heightmap = L"Textures\\meteormap";
 	//misc
@@ -61,12 +61,12 @@ private:
 	//------------ GOLF CODE --------------
 	static constexpr int N_TRAJECTORY_STEPS = 100;
 	static constexpr int N_COLLISION_INDICATORS = 5;
-	std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
+	//std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
 
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
 	void SetGoalPathGuide(DirectX::XMVECTOR ballPos, DirectX::XMVECTOR goalPos);
-	void SetTrajectory(DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity);
+	void SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity);
 	size_t TrajectoryIndexBelowHeightMap(std::vector<std::unique_ptr<Ball>>& trajectory);
 
 	bool mStartGolf = true;

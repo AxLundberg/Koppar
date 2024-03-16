@@ -271,7 +271,7 @@ void Logic::BallControl()
 		mRenderPathToGoal ^= ImGui::Button("GoalGuide");
 
 		SetGoalPathGuide(bp, gp);
-		SetTrajectory(bp, deg_rad(upDown), pitch + deg_rad(rightLeft), initVelocity);
+		SetTrajectory(mTrajectory, bp, deg_rad(upDown), pitch + deg_rad(rightLeft), initVelocity);
 	}
 }
 
@@ -288,7 +288,7 @@ size_t Logic::TrajectoryIndexBelowHeightMap(std::vector<std::unique_ptr<Ball>>& 
 			return i;
 		}
 	}
-	return mTrajectory.size() - 1;
+	return trajectory.size() - 1;
 }
 
 
@@ -321,23 +321,22 @@ void Logic::SetGoalPathGuide(DirectX::XMVECTOR bp, DirectX::XMVECTOR gp)
 	pathPos = XMVectorScale(pathPos, 0.5f);
 	mPathToGoal.get()->SetPosition(pathPos);
 }
-void Logic::SetTrajectory(DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity)
+void Logic::SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR initPos, float horizontalAngle, float turnAngle, float initialVelocity)
 {
 	using namespace DirectX;
 	float angle = horizontalAngle;
-	float it = ImpactT(XMVectorGetY(ballPos), initialVelocity, angle);
-	float timeStep = it / N_TRAJECTORY_STEPS;
-	size_t nStep = N_TRAJECTORY_STEPS;
-	for (size_t i = 0; i < nStep; i++)
+	float it = ImpactT(XMVectorGetY(initPos), initialVelocity, angle);
+	float timeStep = it / trajectory.size();
+	for (size_t i = 0; i < trajectory.size(); i++)
 	{
 		auto [x, y] = ProjectileTrajectory(initialVelocity, angle, i * timeStep);
 
 		float dist = sqrtf(x * x + y * y);
-		float newX = XMVectorGetX(ballPos) + x * sinf(turnAngle);
-		float newY = XMVectorGetY(ballPos) + y;
-		float newZ = XMVectorGetZ(ballPos) + x * cosf(turnAngle);
+		float newX = XMVectorGetX(initPos) + x * sinf(turnAngle);
+		float newY = XMVectorGetY(initPos) + y;
+		float newZ = XMVectorGetZ(initPos) + x * cosf(turnAngle);
 
-		mTrajectory[i].get()->SetPosition({ newX, newY, newZ });
+		trajectory[i].get()->SetPosition({ newX, newY, newZ });
 	}
 }
 
@@ -421,13 +420,6 @@ void Logic::DuFresne()
 	
 	// SOME GOLF rendered here to not be culled
 	{
-		XMVECTOR A = { -5.f, 5.f, 0.f };
-		XMVECTOR B = { -5.f, 5.f, -5.f };
-		XMVECTOR C = { 0.f, 5.f, -5.f };
-		auto plane = XMPlaneFromPoints(C, B, A);
-		mGolfPlane->SetTransformFromPlane(plane);
-		mGolfPlane->Draw(window.Gfx());
-
 		mAim.get()->Draw(window.Gfx());
 		mBall->Draw(window.Gfx());
 		if (mRenderPathToGoal)
@@ -443,16 +435,62 @@ void Logic::DuFresne()
 			{
 				mTrajectory[i].get()->Draw(window.Gfx());
 			}
-			// render collision
-			auto pos1 = mTrajectory[idxBelowHeightMap].get()->GetPosition(); // first pos beneath heightmap
-			auto pos2 = mTrajectory[idxBelowHeightMap-1].get()->GetPosition(); // last pos above heightmap
-			auto terrainHeightAtPos = GetHeight(pos1);
-			auto intersectionPlane = GetHeightMapPlane(pos1);
-			auto p1 = XMLoadFloat3(&pos1);
-			auto p2 = XMLoadFloat3(&pos2);
-			auto res = XMPlaneIntersectLine(intersectionPlane, p1, p2);
-			mCollisionIndicators[0]->SetPosition(res);
-			mCollisionIndicators[0]->Draw(window.Gfx());
+			// render collision TODO make func
+			DirectX::XMVECTOR intersectionPlane = {}, collisionPos = {};
+			{
+				auto pos1 = mTrajectory[idxBelowHeightMap].get()->GetPosition(); // first pos beneath heightmap
+				auto pos2 = mTrajectory[idxBelowHeightMap - 1].get()->GetPosition(); // last pos above heightmap
+				auto terrainHeightAtPos = GetHeight(pos1);
+				intersectionPlane = GetHeightMapPlane(pos1);
+				auto p1 = XMLoadFloat3(&pos1);
+				auto p2 = XMLoadFloat3(&pos2);
+				collisionPos = XMPlaneIntersectLine(intersectionPlane, p1, p2);
+				mCollisionIndicators[0]->SetPosition(collisionPos);
+				mCollisionIndicators[0]->Draw(window.Gfx());
+			}
+
+			// HERE BE COLLISION TRAJECTORY
+			if(!std::isnan(XMVectorGetX(collisionPos)))
+			{
+				DirectX::XMVECTOR planeNormal;
+				{
+					planeNormal = DirectX::XMVectorSet(DirectX::XMVectorGetX(intersectionPlane),
+						DirectX::XMVectorGetY(intersectionPlane),
+						DirectX::XMVectorGetZ(intersectionPlane),
+						0.0f);
+					planeNormal = DirectX::XMVector3Normalize(planeNormal);
+
+					if (XMVectorGetY(planeNormal) > 0)
+					{
+						planeNormal = XMVectorMultiply(planeNormal, { 1.f, -1.f, 1.f });
+					}
+					else
+					{
+						planeNormal = XMVectorMultiply(planeNormal, { -1.f, 1.f, -1.f });
+					}
+				}
+				
+				auto [roll, pitch] = RollPitchFromTo(collisionPos, XMVectorAdd(collisionPos, planeNormal));
+				SetTrajectory(mBounceTrajectory, collisionPos, roll, pitch, 10.f);
+				idxBelowHeightMap = TrajectoryIndexBelowHeightMap(mBounceTrajectory);
+
+				for (size_t i = 1; i < idxBelowHeightMap; i++)
+				{
+					mBounceTrajectory[i].get()->Draw(window.Gfx());
+				}
+				// render collision indicator
+				{
+					auto pos1 = mBounceTrajectory[idxBelowHeightMap].get()->GetPosition(); // first pos beneath heightmap
+					auto pos2 = mBounceTrajectory[idxBelowHeightMap - 1].get()->GetPosition(); // last pos above heightmap
+					auto terrainHeightAtPos = GetHeight(pos1);
+					intersectionPlane = GetHeightMapPlane(pos1);
+					auto p1 = XMLoadFloat3(&pos1);
+					auto p2 = XMLoadFloat3(&pos2);
+					collisionPos = XMPlaneIntersectLine(intersectionPlane, p1, p2);
+					mCollisionIndicators[1]->SetPosition(collisionPos);
+					mCollisionIndicators[1]->Draw(window.Gfx());
+				}
+			}
 		}
 		mGoal->Draw(window.Gfx());
 	}
