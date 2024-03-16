@@ -886,26 +886,38 @@ DirectX::XMVECTOR Logic::GetHeightMapPlane(DirectX::XMFLOAT3 pos)
 	float sideZ = MAP_HEIGHT / 2;
 	float sideX = MAP_WIDTH / 2;
 	// heightmap positions correlated to input pos
-	float sampleZ = (pos.z + sideZ) / (MAP_HEIGHT / (MAP_DIV_X));
-	float sampleX = (pos.x + sideX) / (MAP_WIDTH / (MAP_DIV_Z));
+	float mapZ = pos.z + sideZ;
+	float mapX = pos.x + sideX;
+	// normalized value from 0.0 - 1.0
+	float mapNZ = mapZ / MAP_HEIGHT;
+	float mapNX = mapX / MAP_WIDTH;
+	// sample points of height map
+	float sampleZ = mapNZ * MAP_DIV_Z;
+	float sampleX = mapNX * MAP_DIV_X;
 	//heightmap Sample 'coordinates'
 	float lowZ = floor(sampleZ);
 	float highZ = floor(sampleZ + 1.0f);
 	float lowX = floor(sampleX);
 	float highX = floor(sampleX + 1.0f);
+	// convert from sample -> world pos
+	float w_lowZ = lowZ * (MAP_HEIGHT / MAP_DIV_Z) - (MAP_HEIGHT / (2 * MAP_DIV_Z)) - sideZ;
+	float w_highZ = highZ * (MAP_HEIGHT / MAP_DIV_Z) - (MAP_HEIGHT / (2 * MAP_DIV_Z)) - sideZ;
+	float w_lowX = lowX * (MAP_WIDTH / MAP_DIV_X) - (MAP_WIDTH / (2 * MAP_DIV_X)) - sideX;
+	float w_highX = highX * (MAP_WIDTH / MAP_DIV_X) - (MAP_WIDTH / (2 * MAP_DIV_X)) - sideX;
 
-	DirectX::XMVECTOR A = DirectX::XMVectorSet(highX, height_map[(int)lowZ][(int)highX], lowZ, 0.0f);
-	DirectX::XMVECTOR B = DirectX::XMVectorSet(lowX, height_map[(int)highZ][(int)lowX], highZ, 0.0f);
+	// create a plane from three points
+	DirectX::XMVECTOR A = DirectX::XMVectorSet(w_highX, height_map[(int)lowZ][(int)highX], w_lowZ, 0.0f);
+	DirectX::XMVECTOR B = DirectX::XMVectorSet(w_lowX, height_map[(int)highZ][(int)lowX], w_highZ, 0.0f);
 	DirectX::XMVECTOR C = {};
 
 	//Determine last point from heightmap to use in construction of plane
 	if ((sampleZ - lowZ) >= (highX - sampleX))
 	{
-		C = DirectX::XMVectorSet(highX, height_map[(int)highZ][(int)highX], highZ, 0.0f);
+		C = DirectX::XMVectorSet(w_highX, height_map[(int)highZ][(int)highX], w_highZ, 0.0f);
 	}
 	else
 	{
-		C = DirectX::XMVectorSet(lowX, height_map[(int)lowZ][(int)lowX], lowZ, 0.0f);
+		C = DirectX::XMVectorSet(w_lowX, height_map[(int)lowZ][(int)lowX], w_lowZ, 0.0f);
 	}
 	return DirectX::XMPlaneFromPoints(A, B, C);
 }
@@ -916,14 +928,21 @@ float Logic::GetHeight(DirectX::XMFLOAT3 pos)
 	float sideZ = MAP_HEIGHT / 2;
 	float sideX = MAP_WIDTH / 2;
 	// heightmap positions correlated to input pos
-	float sampleZ = (pos.z + sideZ) / (MAP_HEIGHT / (MAP_DIV_X));
-	float sampleX = (pos.x + sideX) / (MAP_WIDTH / (MAP_DIV_Z));
+	float mapZ = pos.z + sideZ;
+	float mapX = pos.x + sideX;
+	// normalized value from 0.0 - 1.0
+	float mapNZ = mapZ / MAP_HEIGHT;
+	float mapNX = mapX / MAP_WIDTH;
+	// sample points of height map
+	float sampleZ = mapNZ * MAP_DIV_Z;
+	float sampleX = mapNX * MAP_DIV_X;
 
 	DirectX::XMFLOAT4 plane;
 	DirectX::XMStoreFloat4(&plane, GetHeightMapPlane(pos));
 
 	//Return the Height value corresponding to position on the plane
-	return (-plane.w - (sampleX*plane.x) - (sampleZ*plane.z))/plane.y;
+	const float heightValue = (-plane.w - (pos.x * plane.x) - (pos.z * plane.z)) / plane.y;
+	return heightValue;
 }
 
 int Logic::Run()

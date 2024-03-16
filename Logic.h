@@ -73,6 +73,7 @@ private:
 	bool mRenderPathToGoal = false;
 	std::vector<std::unique_ptr<Ball>> mCollisionIndicators = {};
 	std::vector<std::unique_ptr<Ball>> mTrajectory = {};
+	std::vector<std::unique_ptr<Ball>> mBounceTrajectory = {};
 	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), .5f, DirectX::XMFLOAT3{ .0f, .0f, .0f}, DirectX::XMFLOAT3{ 0.9f, 0.9f, 0.9f});
 	std::unique_ptr<Ball> mTest2 = std::make_unique<Ball>(window.Gfx(), 5.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f});
 	std::unique_ptr<Vector> mAim = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
