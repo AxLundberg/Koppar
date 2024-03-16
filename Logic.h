@@ -67,6 +67,7 @@ private:
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
 	void SetGoalPathGuide(DirectX::XMVECTOR ballPos, DirectX::XMVECTOR goalPos);
 	void SetTrajectory(DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity);
+	size_t TrajectoryIndexBelowHeightMap(std::vector<std::unique_ptr<Ball>>& trajectory);
 
 	bool mStartGolf = true;
 	bool mRenderTrajectory = true;

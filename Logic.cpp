@@ -157,6 +157,11 @@ Logic::Logic()
 		const DirectX::XMFLOAT3 col = { 1.f - 0.65f * i/N_TRAJECTORY_STEPS, 0.2f, 0.2f};
 		mTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
 	}
+	for (size_t i = 0; i < N_TRAJECTORY_STEPS/2; i++)
+	{
+		const DirectX::XMFLOAT3 col = { 1.f - 0.65f * i / N_TRAJECTORY_STEPS/2, 0.2f, 0.2f };
+		mBounceTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
+	}
 	for (size_t i = 0; i < N_COLLISION_INDICATORS; i++)
 	{
 		const DirectX::XMFLOAT3 col = { 0.f, 0.8f, 0.2f };
@@ -269,6 +274,23 @@ void Logic::BallControl()
 		SetTrajectory(bp, deg_rad(upDown), pitch + deg_rad(rightLeft), initVelocity);
 	}
 }
+
+size_t Logic::TrajectoryIndexBelowHeightMap(std::vector<std::unique_ptr<Ball>>& trajectory)
+{
+	using namespace DirectX;
+	for (size_t i = 1; i < trajectory.size(); i++)
+	{
+		auto pos = trajectory[i].get()->GetPosition();
+		auto terrainHeightAtPos = GetHeight(pos);
+		// Check if trajectory collides with terrain
+		if (pos.y < terrainHeightAtPos)
+		{
+			return i;
+		}
+	}
+	return mTrajectory.size() - 1;
+}
+
 
 void Logic::SpawnGolfBall(DirectX::XMFLOAT3& location) 
 {
@@ -415,26 +437,22 @@ void Logic::DuFresne()
 		if (mRenderTrajectory)
 		{
 			mTrajectory[0].get()->Draw(window.Gfx());
-			
-			for (size_t i = 1; i < mTrajectory.size(); i++)
+			auto idxBelowHeightMap = TrajectoryIndexBelowHeightMap(mTrajectory);
+			// render trajectory
+			for (size_t i = 1; i < idxBelowHeightMap; i++)
 			{
-				auto pos = mTrajectory[i].get()->GetPosition();
-				auto terrainHeightAtPos = GetHeight(pos);
-				// Check if trajectory collides with terrain
-				if (pos.y < terrainHeightAtPos)
-				{
-					auto pos2 = mTrajectory[i - 1].get()->GetPosition();
-					auto intersectionPlane = GetHeightMapPlane(pos);
-					auto p2 = XMLoadFloat3(&pos2);
-					auto p1 = XMLoadFloat3(&pos);
-					auto res = XMPlaneIntersectLine(intersectionPlane, p1, p2);
-					// render collision ball at impact location
-					mCollisionIndicators[0]->SetPosition(res);
-					mCollisionIndicators[0]->Draw(window.Gfx());
-					break; // only want to render the path that is above the terrain, so we break
-				}
 				mTrajectory[i].get()->Draw(window.Gfx());
 			}
+			// render collision
+			auto pos1 = mTrajectory[idxBelowHeightMap].get()->GetPosition(); // first pos beneath heightmap
+			auto pos2 = mTrajectory[idxBelowHeightMap-1].get()->GetPosition(); // last pos above heightmap
+			auto terrainHeightAtPos = GetHeight(pos1);
+			auto intersectionPlane = GetHeightMapPlane(pos1);
+			auto p1 = XMLoadFloat3(&pos1);
+			auto p2 = XMLoadFloat3(&pos2);
+			auto res = XMPlaneIntersectLine(intersectionPlane, p1, p2);
+			mCollisionIndicators[0]->SetPosition(res);
+			mCollisionIndicators[0]->Draw(window.Gfx());
 		}
 		mGoal->Draw(window.Gfx());
 	}
