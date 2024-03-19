@@ -59,22 +59,27 @@ private:
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
 	//------------ GOLF CODE --------------
+	static constexpr int N_TRAJECTORIES = 4;
 	static constexpr int N_TRAJECTORY_STEPS = 100;
 	static constexpr int N_COLLISION_INDICATORS = 5;
+	
 	//std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
 
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
 	void SetGoalPathGuide(DirectX::XMVECTOR ballPos, DirectX::XMVECTOR goalPos);
 	void SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity);
+	void SetTrajectories(DirectX::FXMVECTOR initialPos, DirectX::FXMVECTOR direction, float initialVelocity, int bounceIdx = 0);
 	size_t TrajectoryIndexBelowHeightMap(std::vector<std::unique_ptr<Ball>>& trajectory);
+	DirectX::XMVECTOR PlaneNormal(DirectX::XMVECTOR plane);
 
 	bool mStartGolf = true;
 	bool mRenderTrajectory = true;
 	bool mRenderPathToGoal = false;
 	std::vector<std::unique_ptr<Ball>> mCollisionIndicators = {};
 	std::vector<std::unique_ptr<Ball>> mTrajectory = {};
-	std::vector<std::unique_ptr<Ball>> mBounceTrajectory = {};
+	std::vector<std::vector<std::unique_ptr<Ball>>> mTrajectories = {};
+	std::vector<size_t> mTrajectoryStopIdx = {};
 	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), .5f, DirectX::XMFLOAT3{ .0f, .0f, .0f}, DirectX::XMFLOAT3{ 0.9f, 0.9f, 0.9f});
 	std::unique_ptr<Ball> mTest2 = std::make_unique<Ball>(window.Gfx(), 5.f, DirectX::XMFLOAT3{ 5.0f, 0.0f, 0.0f}, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f});
 	std::unique_ptr<Vector> mAim = std::make_unique<Vector>(window.Gfx(), DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 4);
