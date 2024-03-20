@@ -152,25 +152,18 @@ Logic::Logic()
 	//frustrum.AddModel(std::move(std::make_unique<Model>(window.Gfx(), L"Crate1", false, 1.0f, XMMatrixTranslation(-12.0f, 12.0f, -12.0f))));
 	const float trajectoryBallRadius = 0.2f;
 	const XMFLOAT3 initLocation = { 0.0f, 0.0f, 0.0f };
-	for (size_t i = 0; i < N_TRAJECTORY_STEPS; i++)
-	{
-		const DirectX::XMFLOAT3 col = { 1.f - 0.65f * i/N_TRAJECTORY_STEPS, 0.2f, 0.2f};
-		mTrajectory.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
-	}
 	for (size_t i = 0; i < N_TRAJECTORIES; i++)
 	{
 		mTrajectoryStopIdx.push_back(0);
 		mTrajectories.push_back({});
-		for (size_t j = 0; j < N_TRAJECTORY_STEPS/(1+i); j++)
+		const auto nTrajectorySpheres = N_TRAJECTORY_STEPS / (1 + i); // number of spheres in each trajectory
+		for (size_t j = 0; j < nTrajectorySpheres; j++)
 		{
-			const DirectX::XMFLOAT3 col = { 1.f - 0.65f * j / N_TRAJECTORY_STEPS, 0.2f, 0.2f };
-			mTrajectories[i].push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, col));
+			const DirectX::XMFLOAT3 trajectoryCol = { 1.f - 0.65f * j / nTrajectorySpheres, 0.2f, 0.2f };
+			mTrajectories[i].push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius, initLocation, trajectoryCol));
 		}
-	}
-	for (size_t i = 0; i < N_COLLISION_INDICATORS; i++)
-	{
-		const DirectX::XMFLOAT3 col = { 0.f, 0.8f, 0.2f };
-		mCollisionIndicators.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius+0.1f, initLocation, col));
+		const DirectX::XMFLOAT3 collisionColor = { 0.f, 0.8f, 0.2f };
+		mCollisionIndicators.push_back(std::make_unique<Ball>(window.Gfx(), trajectoryBallRadius + 0.1f, initLocation, collisionColor));
 	}
 }
 
@@ -330,7 +323,7 @@ void Logic::SetGoalPathGuide(DirectX::XMVECTOR bp, DirectX::XMVECTOR gp)
 	mPathToGoal.get()->SetScale(XMVECTOR{ .1f, .1f, distance / 2.f });
 	// rotate path towards goal
 	auto [roll, pitch] = RollPitchFromTo(bp, gp);
-	mPathToGoal.get()->SetRotation(XMVECTOR{ roll, pitch, 0.f });
+	mPathToGoal.get()->SetRotation(XMVECTOR{ -roll, pitch, 0.f });
 	// set position in the middle between ball pos and goal pos
 	XMVECTOR pathPos = XMVectorAdd(bp, gp);
 	pathPos = XMVectorScale(pathPos, 0.5f);
