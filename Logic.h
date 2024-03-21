@@ -59,25 +59,40 @@ private:
 	//Vector vec{ window.Gfx(), {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5 };
 
 	//------------ GOLF CODE --------------
+	struct GolfConstants
+	{
+		bool twoPiece = true;
+		float ballMass = 0.04593f; // 45 g
+		float ballRadius = 0.04267f; // 42 mm
+		float ballStreamArea = ballRadius * ballRadius * PI;
+		float clubHeadMass = 0.310f; // 300 g
+		float loftAngle = 10.5f; // 10 degrees
+		float airDensity = 1.21f; // 1.2 kg/m^3
+		float clubHeadVelocity = 30.f; // 30m/s
+		float collisionKoefficient = 0.78f;
+		float frictionGround = 0.11f;
+	}mGC;
 	static constexpr int N_TRAJECTORIES = 4;
 	static constexpr int N_TRAJECTORY_STEPS = 100;
 	static constexpr int N_COLLISION_INDICATORS = 5;
 	
 	//std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
 
+	float GolfLaunchVelocity(bool twoPiece = true);
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
 	void SetGoalPathGuide(DirectX::XMVECTOR ballPos, DirectX::XMVECTOR goalPos);
-	void SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR ballPos, float horizontalAngle, float turnAngle, float initialVelocity);
+	void SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR ballPos, DirectX::FXMVECTOR direction, float initialVelocity);
+
 	void SetTrajectories(DirectX::FXMVECTOR initialPos, DirectX::FXMVECTOR direction, float initialVelocity, int bounceIdx = 0);
 	size_t TrajectoryIndexBelowHeightMap(std::vector<std::unique_ptr<Ball>>& trajectory);
 	DirectX::XMVECTOR PlaneNormal(DirectX::XMVECTOR plane);
+	DirectX::XMVECTOR HeightMapIntersectionPlane(DirectX::XMVECTOR posAbove, DirectX::XMVECTOR posBelow);
 
 	bool mStartGolf = true;
 	bool mRenderTrajectory = true;
 	bool mRenderPathToGoal = false;
 	std::vector<std::unique_ptr<Ball>> mCollisionIndicators = {};
-	std::vector<std::unique_ptr<Ball>> mTrajectory = {};
 	std::vector<std::vector<std::unique_ptr<Ball>>> mTrajectories = {};
 	std::vector<size_t> mTrajectoryStopIdx = {};
 	std::unique_ptr<Ball> mBall = std::make_unique<Ball>(window.Gfx(), .5f, DirectX::XMFLOAT3{ .0f, .0f, .0f}, DirectX::XMFLOAT3{ 0.9f, 0.9f, 0.9f});

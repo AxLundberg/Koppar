@@ -211,6 +211,54 @@ std::pair<float, float> RollPitchFromTo(DirectX::XMVECTOR src, DirectX::XMVECTOR
 	return { angleYXplane, angleXZplane };
 }
 
+float Logic::GolfLaunchVelocity(bool twoPiece)
+{
+	using namespace DirectX;
+	float velocity = 0.f;
+	float loftAngle = deg_rad(mGC.loftAngle);
+	float vp = ((1 + mGC.collisionKoefficient) * mGC.clubHeadMass * mGC.clubHeadVelocity * cosf(loftAngle)) / (mGC.clubHeadMass + mGC.ballMass);
+	float vn = (2 * mGC.clubHeadMass * mGC.clubHeadVelocity * sinf(loftAngle)) / (7 * (mGC.clubHeadMass + mGC.ballMass));
+	float w = -1*(2 * mGC.clubHeadMass * mGC.clubHeadVelocity * sinf(loftAngle)) / (7 * mGC.ballRadius * (mGC.clubHeadMass + mGC.ballMass));
+	float ballDiam = mGC.ballRadius * 2;
+	float ww = -vn * 1 / mGC.ballRadius;
+	float www = -vn * 7 / mGC.ballRadius;
+	float wwww = fabs(w);
+	float wwwww = 7 / ballDiam;
+	float wwwwww = 7 / mGC.ballRadius;
+	XMVECTOR u1 = XMVectorScale({ cosf(loftAngle), sinf(loftAngle), 0.0f }, vp);
+	XMVECTOR u2 = XMVectorScale({ sinf(loftAngle), -cosf(loftAngle), 0.0f }, vn);
+	XMVECTOR u = XMVectorAdd(u1, u2);
+	float v = XMVectorGetX(XMVector3Length(u));
+	// Drag
+	float cd = {};
+	{
+		if (twoPiece)
+			cd = mGC.clubHeadVelocity < 65.f ? 0.53f - 0.0051f * mGC.clubHeadVelocity : 0.21f;
+		else // ThreePiece
+			cd = mGC.clubHeadVelocity < 60.f ? 0.73f - 0.0084f * mGC.clubHeadVelocity : 0.22f;
+	}
+	float fd = .5f * cd * mGC.airDensity * mGC.ballStreamArea * v * v;
+	float fdx = -fd * XMVectorGetX(u) / v;
+	float fdy = -fd * XMVectorGetY(u) / v;
+	//float cm = 0.05f * (sqrtf(1 + (0.31f * abs)164.f / v)) - 1); // 164 ???
+	float cm = 0.05f * (sqrtf(1 + (0.31f * fabs(w) / v)) - 1);
+	float fm = .5f * cm * mGC.airDensity * mGC.ballStreamArea * v * v;
+	float fmx = -fm * XMVectorGetX(u) / v;
+	float fmy = fm * XMVectorGetY(u) / v;
+	float vBall = (mGC.clubHeadVelocity * (1 + mGC.collisionKoefficient)) / (1 + (mGC.ballMass / mGC.clubHeadMass));
+	float vBalli = cosf(loftAngle) * cosf(loftAngle) * sinf(PI/2-loftAngle)*vBall;
+	XMVECTOR v1 = { 0.f, -1.f, 0.f };
+	XMVECTOR v2 = { XMVectorGetX(u) / v, 0.f, XMVectorGetY(u) / v };
+	v2 = XMVectorScale(v2, fm);
+	auto v3 = XMVector3Cross(v1, v2);
+
+	// colli
+	float cbv = ((1 + mGC.collisionKoefficient) * mGC.clubHeadMass) / (mGC.ballMass / mGC.clubHeadMass);
+	cbv *= mGC.clubHeadVelocity;
+	return velocity;
+}
+
+
 void Logic::BallControl()
 {
 	ImGui::End();
@@ -219,6 +267,26 @@ void Logic::BallControl()
 	{
 		using namespace DirectX;
 		using namespace std::string_literals;
+
+		static bool imguiGolfConstants = false;
+		imguiGolfConstants ^= ImGui::Button("Set golf constants");
+		if (imguiGolfConstants)
+		{
+			static float ballMass = mGC.ballMass*1000, ballRadius = mGC.ballRadius*1000, clubHeadMass = mGC.clubHeadMass *1000;
+			ImGui::SliderFloat("ball mass(gram)", &ballMass, 20.f, 60.f, "%.1f");
+			ImGui::SliderFloat("ball radius(mm)", &ballRadius, 30.f, 60.f, "%.1f");
+			ImGui::SliderFloat("club head mass(gram)", &clubHeadMass, 100.f, 600.f, "%.0f");
+			ImGui::SliderFloat("loft angle(deg)", &mGC.loftAngle, 1.f, 20.f, "%.1f");
+			ImGui::SliderFloat("air density(kg/m^3)", &mGC.airDensity, .8f, 2.f, "%.2f");
+			ImGui::SliderFloat("club velocity(m/s)", &mGC.clubHeadVelocity, 1.f, 75.f, "%.1f");
+			ImGui::SliderFloat("collisionKoefficient", &mGC.collisionKoefficient, 0.1f, 1.f, "%.2f");
+			ImGui::SliderFloat("ground friction", &mGC.frictionGround, 0.05f, 1.f, "%.2f");
+			mGC.ballMass = ballMass / 1000;
+			mGC.ballRadius = ballRadius / 1000;
+			mGC.clubHeadMass = clubHeadMass / 1000;
+			mGC.ballStreamArea = mGC.ballRadius * mGC.ballRadius * PI;
+			GolfLaunchVelocity();
+		}
 
 		static XMFLOAT3 ballPos, imguiBallPos = { 0.f, 0.f, 0.f };
 		static XMVECTOR bp = XMLoadFloat3(&imguiBallPos);
@@ -255,7 +323,7 @@ void Logic::BallControl()
 			rightLeft = 0.f;
 			upDown = -rad_deg(std::clamp(roll, -PI / 2, 0.f));;
 		}
-		
+
 		// Apply aim
 		auto rot = XMVECTOR{ -deg_rad(upDown), pitch + deg_rad(rightLeft), 0.f };
 		mAim.get()->SetRotation(rot);
@@ -272,14 +340,9 @@ void Logic::BallControl()
 		auto verticalAngle = pitch + deg_rad(rightLeft);
 		auto xzPlaneLen = cosf(horizontalAngle);
 		XMVECTOR direction = { xzPlaneLen * sinf(verticalAngle), sinf(horizontalAngle), xzPlaneLen * cosf(verticalAngle) };
+
 		SetGoalPathGuide(bp, gp);
-
-		auto [hAngle, vAngle] = RollPitchFromTo(bp, XMVectorAdd(bp, direction));
-		auto cha = deg_rad(upDown);
-		auto cva = pitch + deg_rad(rightLeft);
-
 		SetTrajectories(bp, direction, initVelocity);
-		//SetTrajectory(mTrajectory, bp, deg_rad(upDown), pitch + deg_rad(rightLeft), initVelocity);
 	}
 }
 
@@ -329,34 +392,9 @@ void Logic::SetGoalPathGuide(DirectX::XMVECTOR bp, DirectX::XMVECTOR gp)
 	pathPos = XMVectorScale(pathPos, 0.5f);
 	mPathToGoal.get()->SetPosition(pathPos);
 }
-void Logic::SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR initPos, float horizontalAngle, float turnAngle, float initialVelocity)
+void Logic::SetTrajectory(std::vector<std::unique_ptr<Ball>>& trajectory, DirectX::FXMVECTOR initPos, DirectX::FXMVECTOR direction, float initialVelocity)
 {
 	using namespace DirectX;
-	float angle = horizontalAngle;
-	float it = ImpactT(XMVectorGetY(initPos), initialVelocity, angle);
-	float timeStep = it / trajectory.size();
-	for (size_t i = 0; i < trajectory.size(); i++)
-	{
-		auto [x, y] = ProjectileTrajectory(initialVelocity, angle, i * timeStep);
-
-		float dist = sqrtf(x * x + y * y);
-		float newX = XMVectorGetX(initPos) + x * sinf(turnAngle);
-		float newY = XMVectorGetY(initPos) + y;
-		float newZ = XMVectorGetZ(initPos) + x * cosf(turnAngle);
-
-		trajectory[i].get()->SetPosition({ newX, newY, newZ });
-	}
-}
-
-void Logic::SetTrajectories(DirectX::FXMVECTOR initPos, DirectX::FXMVECTOR direction, float initialVelocity, int bounceIdx)
-{
-	using namespace DirectX;
-	// recursive return
-	if (std::isnan(XMVectorGetX(initPos)) || bounceIdx == N_TRAJECTORIES)
-		return;
-
-	auto& trajectory = mTrajectories[bounceIdx];
-
 	auto [horizontalAngle, verticalAngle] = RollPitchFromTo(initPos, XMVectorAdd(initPos, direction));
 	float it = ImpactT(XMVectorGetY(initPos), initialVelocity, horizontalAngle);
 	float timeStep = it / trajectory.size();
@@ -370,6 +408,43 @@ void Logic::SetTrajectories(DirectX::FXMVECTOR initPos, DirectX::FXMVECTOR direc
 
 		trajectory[i].get()->SetPosition({ newX, newY, newZ });
 	}
+}
+
+DirectX::XMVECTOR Logic::HeightMapIntersectionPlane(DirectX::XMVECTOR posAbove, DirectX::XMVECTOR posBelow)
+{
+	using namespace DirectX;
+	static constexpr int granularity = 100;
+	static constexpr float scaleIncrement = 1.f/granularity;
+
+	DirectX::XMVECTOR diff = XMVectorSubtract(posBelow, posAbove);
+	
+	XMFLOAT3 posf3 = {};
+	for (size_t i = 0; i < granularity; i++)
+	{
+		auto scaleFactor = i * scaleIncrement;
+		const auto posCheck = XMVectorAdd(posAbove, XMVectorScale(diff, scaleFactor));
+		XMStoreFloat3(&posf3, posCheck);
+		auto heightAtPos = GetHeight(posf3);
+		if (posf3.y < heightAtPos)
+		{
+			return GetHeightMapPlane(posf3);
+		}
+	}
+	XMStoreFloat3(&posf3, posBelow);
+	return GetHeightMapPlane(posf3);
+}
+
+
+void Logic::SetTrajectories(DirectX::FXMVECTOR initPos, DirectX::FXMVECTOR direction, float initialVelocity, int bounceIdx)
+{
+	using namespace DirectX;
+	// recursive return
+	if (std::isnan(XMVectorGetX(initPos)) || bounceIdx == N_TRAJECTORIES)
+		return;
+
+	auto& trajectory = mTrajectories[bounceIdx];
+
+	SetTrajectory(trajectory, initPos, direction, initialVelocity);
 
 	// store render stop (don't render trajectory below height map)
 	auto idxBelowHeightMap = TrajectoryIndexBelowHeightMap(trajectory);
@@ -378,12 +453,11 @@ void Logic::SetTrajectories(DirectX::FXMVECTOR initPos, DirectX::FXMVECTOR direc
 	// collision
 	XMVECTOR intersectionPlane = {}, collisionPos = {};
 	{
-		auto pos1 = trajectory[idxBelowHeightMap].get()->GetPosition(); // first pos beneath heightmap
-		auto pos2 = trajectory[idxBelowHeightMap - 1].get()->GetPosition(); // last pos above heightmap
-		auto terrainHeightAtPos = GetHeight(pos1);
-		intersectionPlane = GetHeightMapPlane(pos1);
-		auto p1 = XMLoadFloat3(&pos1);
-		auto p2 = XMLoadFloat3(&pos2);
+		auto posBelow = trajectory[idxBelowHeightMap].get()->GetPosition(); // first pos beneath heightmap
+		auto posAbove = trajectory[idxBelowHeightMap - 1].get()->GetPosition(); // last pos above heightmap
+		auto p1 = XMLoadFloat3(&posBelow);
+		auto p2 = XMLoadFloat3(&posAbove);
+		intersectionPlane = HeightMapIntersectionPlane(p2, p1);
 		collisionPos = XMPlaneIntersectLine(intersectionPlane, p1, p2);
 		mCollisionIndicators[bounceIdx]->SetPosition(collisionPos);
 	}
