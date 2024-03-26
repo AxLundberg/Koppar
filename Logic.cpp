@@ -344,13 +344,9 @@ void Logic::TestP117()
 		float denom3 = dotP(N, crossP(vDiv(crossP(r2, N), I2), r2));
 		float impulse = numerator / (denom1 + denom2 + denom3);
 
-		auto vClub = XMVectorAdd(v_r, vDiv(XMVectorScale(N, impulse), m1));
-		auto vBall = vDiv(XMVectorScale(N, -impulse), m2);
-
 		float impactForce = impulse / mGC.collisionDuration;
 		auto nIF = XMVectorScale(N, impactForce); // normal impact force
-
-		float u = mGC.frictionClubBall/impactForce; // ratio tangential friction to normal force
+		float u = (sinf(loft) * -impactForce * mGC.frictionClubBall) / impactForce; // ratio tangential friction to normal force
 		XMVECTOR T = { sinf(loft), -cosf(loft), 0.f }; // unit tangent vector
 		XMVECTOR Tbook = crossP(crossP(N, v_r), N);
 		Tbook = XMVector3Normalize(Tbook);
@@ -358,14 +354,9 @@ void Logic::TestP117()
 		vClubBook = XMVectorAdd(v_r, vDiv(XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse)), m1));
 		vBallBook = vDiv(XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse)), m2);
 
-		float I_cg = 0.f;
-		{
-			XMVECTOR clubCoGtoImpact = { mGC.clubCoGtoImpact.x, mGC.clubCoGtoImpact.y, mGC.clubCoGtoImpact.z };
-			XMVECTOR ballCoGtoImpact = r2;
-			auto d_c = XMVectorGetX(XMVector3Length(clubCoGtoImpact));
-
-			I_cg = I1 + m1 * d_c * d_c + I2 + m2 * mGC.ballRadius * mGC.ballRadius;
-		}
+		// system moment of inertia
+		float I_cg = I1 + m1 * mGC.clubCogDist * mGC.clubCogDist + I2 + m2 * mGC.ballRadius * mGC.ballRadius;
+		
 
 		wClub = vDiv(crossP(r1, XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse))), I_cg);
 		wBall = vDiv(crossP(r2, XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse))), I_cg);

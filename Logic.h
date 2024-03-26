@@ -71,7 +71,7 @@ private:
 		float clubHeadVelocity = 30.f; // 30m/s
 		float collisionKoefficient = 0.78f;
 		float frictionGround = 0.11f;
-		float frictionClubBall = 0.65f;
+		float frictionClubBall = 0.3f;
 		float collisionDuration = 0.01f;
 		float clubMOI = 0.0001f;
 		float ballRPM = 0.f;
