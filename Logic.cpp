@@ -233,9 +233,9 @@ void Logic::ImpulseP133()
 	float v_c = XMVectorGetX(XMVector3Length(vClub));
 
 	float bKinetic = 0.5f * mGC.ballMass * v_b * v_b;
-	float impactForce = bKinetic / mGC.collisionDist;
+	float impactForce = bKinetic / mGC.collisionDuration;
 	float cKinetic = 0.5f * mGC.clubHeadMass * mGC.clubHeadVelocity * mGC.clubHeadVelocity - 0.5f * mGC.clubHeadMass * v_c * v_c;
-	float impf = cKinetic / mGC.collisionDist;
+	float impf = cKinetic / mGC.collisionDuration;
 
 	// friction bullshit
 	float ff = mGC.ballMass * G;
@@ -303,7 +303,94 @@ float Logic::GolfLaunchVelocity(bool twoPiece)
 
 	return velocity;
 }
+void Logic::TestP117()
+{
+	using namespace DirectX;
+	auto dotP = [](XMVECTOR v1, XMVECTOR v2) {
+		return XMVectorGetX(XMVector3Dot(v1, v2));
+	};
+	auto crossP = [](XMVECTOR v1, XMVECTOR v2) {
+		return XMVector3Cross(v1, v2);
+	};
+	auto vDiv = [](XMVECTOR v1, float denom) {
+		return XMVectorScale(v1, 1.f/denom);
+	};
+	auto GetVelocity = [](XMVECTOR v1) {
+		return XMVectorGetX(XMVector3Length(v1));
+	};
 
+
+	auto loft = deg_rad(mGC.loftAngle);
+
+	XMVECTOR vBallBook, vClubBook, wClub, wBall;
+	{
+		XMVECTOR N = { cosf(loft), sinf(loft), 0.f }; // unit vector along line of impact
+		//XMVECTOR v_r = { mGC.clubHeadVelocity, 0.f, 0.f }; // relative velocity club/ball
+		XMVECTOR v_r = { cosf(loft) * mGC.clubHeadVelocity, sinf(loft) * mGC.clubHeadVelocity, 0.f}; // relative velocity club/ball
+		
+		float E = mGC.collisionKoefficient; // coefficient of restitution
+		float m1 = mGC.clubHeadMass;
+		float m2 = mGC.ballMass;
+		XMVECTOR r1 = { cosf(deg_rad(mGC.clubCogAngle)) * mGC.clubCogDist, sinf(deg_rad(mGC.clubCogAngle)) * mGC.clubCogDist, 0.f };; // vector from club center of gravity to impact
+		//XMVECTOR r1 = XMLoadFloat3(&mGC.clubCoGtoImpact); // vector from club center of gravity to impact
+		XMVECTOR r2 = { -cosf(loft) * mGC.ballRadius, -sinf(loft)*mGC.ballRadius, 0.f }; // vector from ball center of gravity to impact
+		float I1 = mGC.clubMOI;
+		float I2 = m1 * mGC.ballRadius * mGC.ballRadius * 2.f / 5; // ball Moment of Inertia
+
+		// calculate impulse
+		float numerator = -(dotP(v_r, N) * (E + 1));
+		float denom1 = 1 / m1 + 1 / m2;
+		float denom2 = dotP(N, crossP(vDiv(crossP(r1, N), I1), r1));
+		float denom3 = dotP(N, crossP(vDiv(crossP(r2, N), I2), r2));
+		float impulse = numerator / (denom1 + denom2 + denom3);
+
+		auto vClub = XMVectorAdd(v_r, vDiv(XMVectorScale(N, impulse), m1));
+		auto vBall = vDiv(XMVectorScale(N, -impulse), m2);
+
+		float impactForce = impulse / mGC.collisionDuration;
+		auto nIF = XMVectorScale(N, impactForce); // normal impact force
+
+		float u = mGC.frictionClubBall/impactForce; // ratio tangential friction to normal force
+		XMVECTOR T = { sinf(loft), -cosf(loft), 0.f }; // unit tangent vector
+		XMVECTOR Tbook = crossP(crossP(N, v_r), N);
+		Tbook = XMVector3Normalize(Tbook);
+
+		vClubBook = XMVectorAdd(v_r, vDiv(XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse)), m1));
+		vBallBook = vDiv(XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse)), m2);
+
+		float I_cg = 0.f;
+		{
+			XMVECTOR clubCoGtoImpact = { mGC.clubCoGtoImpact.x, mGC.clubCoGtoImpact.y, mGC.clubCoGtoImpact.z };
+			XMVECTOR ballCoGtoImpact = r2;
+			auto d_c = XMVectorGetX(XMVector3Length(clubCoGtoImpact));
+
+			I_cg = I1 + m1 * d_c * d_c + I2 + m2 * mGC.ballRadius * mGC.ballRadius;
+		}
+
+		wClub = vDiv(crossP(r1, XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse))), I_cg);
+		wBall = vDiv(crossP(r2, XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse))), I_cg);
+	}
+
+	XMVECTOR vBallFormula;
+	{
+		XMVECTOR e_n = { sinf(loft), -cosf(loft), 0.0f };
+		XMVECTOR e_p = { cosf(loft), sinf(loft), 0.0f };
+
+		float v_p = ((1 + mGC.collisionKoefficient) * mGC.clubHeadMass * mGC.clubHeadVelocity * cosf(loft)) / (mGC.clubHeadMass + mGC.ballMass);
+		float v_n = (2 * mGC.clubHeadMass * mGC.clubHeadVelocity * sinf(loft)) / (7 * (mGC.clubHeadMass + mGC.ballMass));
+		
+		vBallFormula = XMVectorAdd(XMVectorScale(e_p, v_p), XMVectorScale(e_n, v_n));
+	}
+
+	float velocityBook = GetVelocity(vBallBook);
+	float velocityFormula = GetVelocity(vBallFormula);
+	auto w1 = wClub;
+	auto w2 = wBall;
+	auto rpm = XMVectorGetZ(wBall) * 60.f / 2 * PI;
+	mGC.ballRPM = rpm;
+	XMStoreFloat3(&mGC.ballVelocity, vBallBook);
+	XMStoreFloat3(&mGC.ballVelocityFormula, vBallFormula);
+}
 
 void Logic::BallControl()
 {
@@ -328,15 +415,34 @@ void Logic::BallControl()
 			ImGui::SliderFloat("collisionKoefficient", &mGC.collisionKoefficient, 0.1f, 1.f, "%.2f");
 			ImGui::SliderFloat("ground friction", &mGC.frictionGround, 0.05f, 1.f, "%.2f");
 			ImGui::SliderFloat("frictionCoefficient", &mGC.frictionClubBall, 0.3f, .8f, "%.2f");
-			ImGui::SliderFloat("collisionDistance", &mGC.collisionDist, 0.01f, .1f, "%.3f");
-			ImGui::SliderFloat("clubMOI", &mGC.clubMOI, 0.0002, 0.0008, "%.5f");
-			ImGui::SliderFloat3("clubCoGtoImpact", (float*)&mGC.clubCoGtoImpact, 0.005, 0.04, "%.3f");
+			ImGui::SliderFloat("collisionDuration", &mGC.collisionDuration, 0.001f, .01f, "%.3f");
+			ImGui::SliderFloat("clubMOI(kg/m^2)", &mGC.clubMOI, .0001f, .0008f, "%.5f");
+
+			static float clubCoGDist = mGC.clubCogDist*100.f;
+			static float clubCoGAngle = mGC.clubCogAngle;
+			ImGui::SliderFloat("clubCoGdist(cm)", &clubCoGDist, 0.5f, 10.f, "%.1f");
+			ImGui::SliderFloat("clubCoGtoAnle(deg)", &clubCoGAngle, 0.0f, 90.f, "%.1f");
+
+			mGC.clubCoGtoImpact.x = (clubCoGDist / 100.f) * cosf(deg_rad(clubCoGAngle));
+			mGC.clubCoGtoImpact.y = (clubCoGDist / 100.f) * sinf(deg_rad(clubCoGAngle));
+
+			ImGui::SliderFloat3("clubCoGtoImpact", (float*)&mGC.clubCoGtoImpact, 0.005f, 0.4f, "%.3f");
 			mGC.ballMass = ballMass / 1000;
 			mGC.ballRadius = ballRadius / 1000;
+			mGC.clubCogDist = clubCoGDist / 100.f;
+			mGC.clubCogAngle = clubCoGAngle;
 			mGC.clubHeadMass = clubHeadMass / 1000;
 			mGC.ballStreamArea = mGC.ballRadius * mGC.ballRadius * PI;
 			GolfLaunchVelocity();
 			ImpulseP133();
+			if (ImGui::Button("Set club CoG on impactNormal")) clubCoGAngle = mGC.clubCogAngle;
+
+			
+			TestP117();
+			// just print values on imgui
+			ImGui::SliderFloat3("ball Velocity book", (float*)&mGC.ballVelocity, 0.0f, 1000.0f, "%.3f");
+			ImGui::SliderFloat3("ball Velocity formula", (float*)&mGC.ballVelocityFormula, 0.0f, 1000.0f, "%.3f");
+			ImGui::SliderFloat("ball launch rpm", &mGC.ballRPM, 0.0f, 1000.f, "%.1f");
 		}
 
 		static XMFLOAT3 ballPos, imguiBallPos = { 0.f, 0.f, 0.f };

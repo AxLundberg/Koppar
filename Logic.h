@@ -72,7 +72,14 @@ private:
 		float collisionKoefficient = 0.78f;
 		float frictionGround = 0.11f;
 		float frictionClubBall = 0.65f;
-		float collisionDist = 0.01f;
+		float collisionDuration = 0.01f;
+		float clubMOI = 0.0001f;
+		float ballRPM = 0.f;
+		float clubCogDist = 0.04f; // 4cm
+		float clubCogAngle = 10.5f; // 10.5 deg
+		DirectX::XMFLOAT3 clubCoGtoImpact { clubCogDist*cosf(deg_rad(clubCogAngle)), clubCogDist* sinf(deg_rad(clubCogAngle)), 0.f}; // vector from clubs center of gravity to impact point
+		DirectX::XMFLOAT3 ballVelocity = { 0.f, 0.f, 0.f };
+		DirectX::XMFLOAT3 ballVelocityFormula = { 0.f, 0.f, 0.f };
 	}mGC;
 	static constexpr float G = 9.8f;
 	static constexpr int N_TRAJECTORIES = 4;
@@ -81,7 +88,7 @@ private:
 	
 	//std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
 	void ImpulseP133();
-
+	void TestP117();
 	float GolfLaunchVelocity(bool twoPiece = true);
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
 	void SpawnGolfGoal(DirectX::XMFLOAT3& location);
