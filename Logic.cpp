@@ -210,7 +210,36 @@ std::pair<float, float> RollPitchFromTo(DirectX::XMVECTOR src, DirectX::XMVECTOR
 	auto angleYXplane = atan2f(y, x);
 	return { angleYXplane, angleXZplane };
 }
+void Logic::ImpulseP133()
+{
+	// frictionless impact
+	using namespace DirectX;
+	const float loft = deg_rad(mGC.loftAngle);
 
+	XMVECTOR lineOfAction = { cosf(loft), sinf(loft), 0.f };
+
+	const float vr = mGC.clubHeadVelocity;
+	float impulse = (-vr * (mGC.collisionKoefficient + 1)) / ((1.f / mGC.ballMass) + (1.f / mGC.clubHeadMass));
+	
+	auto vBall = XMVectorDivide(XMVectorScale(lineOfAction, -impulse), XMVectorReplicate(mGC.ballMass));
+
+	XMVECTOR vClubInit = { mGC.clubHeadVelocity, 0.f, 0.f };
+	auto vClub = XMVectorAdd(vClubInit, XMVectorDivide(XMVectorScale(lineOfAction, impulse), XMVectorReplicate(mGC.clubHeadMass)));
+	auto top = 0;
+
+	// impact force
+	auto test = XMVector3Length(vBall);
+	float v_b = XMVectorGetX(XMVector3Length(vBall));
+	float v_c = XMVectorGetX(XMVector3Length(vClub));
+
+	float bKinetic = 0.5f * mGC.ballMass * v_b * v_b;
+	float impactForce = bKinetic / mGC.collisionDist;
+	float cKinetic = 0.5f * mGC.clubHeadMass * mGC.clubHeadVelocity * mGC.clubHeadVelocity - 0.5f * mGC.clubHeadMass * v_c * v_c;
+	float impf = cKinetic / mGC.collisionDist;
+
+	// friction bullshit
+	float ff = mGC.ballMass * G;
+}
 float Logic::GolfLaunchVelocity(bool twoPiece)
 {
 	using namespace DirectX;
@@ -220,8 +249,8 @@ float Logic::GolfLaunchVelocity(bool twoPiece)
 	float vn = (2 * mGC.clubHeadMass * mGC.clubHeadVelocity * sinf(loftAngle)) / (7 * (mGC.clubHeadMass + mGC.ballMass));
 	float w = -1*(2 * mGC.clubHeadMass * mGC.clubHeadVelocity * sinf(loftAngle)) / (7 * mGC.ballRadius * (mGC.clubHeadMass + mGC.ballMass));
 	float ballDiam = mGC.ballRadius * 2;
-	float ww = -vn * 1 / mGC.ballRadius;
-	float www = -vn * 7 / mGC.ballRadius;
+	float ww = -1 / mGC.ballRadius;
+	float www = fabs(ww);
 	float wwww = fabs(w);
 	float wwwww = 7 / ballDiam;
 	float wwwwww = 7 / mGC.ballRadius;
@@ -240,6 +269,9 @@ float Logic::GolfLaunchVelocity(bool twoPiece)
 	float fd = .5f * cd * mGC.airDensity * mGC.ballStreamArea * v * v;
 	float fdx = -fd * XMVectorGetX(u) / v;
 	float fdy = -fd * XMVectorGetY(u) / v;
+
+	// Calculate C_m (very weird)
+	
 	//float cm = 0.05f * (sqrtf(1 + (0.31f * abs)164.f / v)) - 1); // 164 ???
 	float cm = 0.05f * (sqrtf(1 + (0.31f * fabs(w) / v)) - 1);
 	float fm = .5f * cm * mGC.airDensity * mGC.ballStreamArea * v * v;
@@ -252,9 +284,23 @@ float Logic::GolfLaunchVelocity(bool twoPiece)
 	v2 = XMVectorScale(v2, fm);
 	auto v3 = XMVector3Cross(v1, v2);
 
+
+	//TEST
+	XMVECTOR e_n = { sinf(loftAngle), 0.f, -cosf(loftAngle), 0.f };
+	XMVECTOR e_p = { cosf(loftAngle), 0.f, sinf(loftAngle), 0.f };
+	auto e_y = XMVector3Cross(e_n, e_p);
+	
 	// colli
 	float cbv = ((1 + mGC.collisionKoefficient) * mGC.clubHeadMass) / (mGC.ballMass / mGC.clubHeadMass);
 	cbv *= mGC.clubHeadVelocity;
+	// BB
+	{
+		XMVECTOR V = { 71, 0, 0, 0 };
+		XMVECTOR N = { 0.875f, 0.484f, 0.f, 0.f };
+		auto res = XMVector2Dot(V, N);
+		auto asda = 34;
+	}
+
 	return velocity;
 }
 
@@ -281,11 +327,16 @@ void Logic::BallControl()
 			ImGui::SliderFloat("club velocity(m/s)", &mGC.clubHeadVelocity, 1.f, 75.f, "%.1f");
 			ImGui::SliderFloat("collisionKoefficient", &mGC.collisionKoefficient, 0.1f, 1.f, "%.2f");
 			ImGui::SliderFloat("ground friction", &mGC.frictionGround, 0.05f, 1.f, "%.2f");
+			ImGui::SliderFloat("frictionCoefficient", &mGC.frictionClubBall, 0.3f, .8f, "%.2f");
+			ImGui::SliderFloat("collisionDistance", &mGC.collisionDist, 0.01f, .1f, "%.3f");
+			ImGui::SliderFloat("clubMOI", &mGC.clubMOI, 0.0002, 0.0008, "%.5f");
+			ImGui::SliderFloat3("clubCoGtoImpact", (float*)&mGC.clubCoGtoImpact, 0.005, 0.04, "%.3f");
 			mGC.ballMass = ballMass / 1000;
 			mGC.ballRadius = ballRadius / 1000;
 			mGC.clubHeadMass = clubHeadMass / 1000;
 			mGC.ballStreamArea = mGC.ballRadius * mGC.ballRadius * PI;
 			GolfLaunchVelocity();
+			ImpulseP133();
 		}
 
 		static XMFLOAT3 ballPos, imguiBallPos = { 0.f, 0.f, 0.f };

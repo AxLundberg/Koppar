@@ -71,12 +71,16 @@ private:
 		float clubHeadVelocity = 30.f; // 30m/s
 		float collisionKoefficient = 0.78f;
 		float frictionGround = 0.11f;
+		float frictionClubBall = 0.65f;
+		float collisionDist = 0.01f;
 	}mGC;
+	static constexpr float G = 9.8f;
 	static constexpr int N_TRAJECTORIES = 4;
 	static constexpr int N_TRAJECTORY_STEPS = 100;
 	static constexpr int N_COLLISION_INDICATORS = 5;
 	
 	//std::unique_ptr<TestPlane> mGolfPlane = std::make_unique<TestPlane>(window.Gfx(), L"ColorIndexVS.cso", L"ColorIndexPS.cso", DirectX::XMMatrixTranslation(0.0f, .0f, .0f), 19.0f, 10.0f);
+	void ImpulseP133();
 
 	float GolfLaunchVelocity(bool twoPiece = true);
 	void SpawnGolfBall(DirectX::XMFLOAT3& location);
