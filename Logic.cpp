@@ -318,15 +318,15 @@ void Logic::TestP117()
 	auto GetVelocity = [](XMVECTOR v1) {
 		return XMVectorGetX(XMVector3Length(v1));
 	};
-
+	
 
 	auto loft = deg_rad(mGC.loftAngle);
 
 	XMVECTOR vBallBook, vClubBook, wClub, wBall;
 	{
 		XMVECTOR N = { cosf(loft), sinf(loft), 0.f }; // unit vector along line of impact
-		//XMVECTOR v_r = { mGC.clubHeadVelocity, 0.f, 0.f }; // relative velocity club/ball
-		XMVECTOR v_r = { cosf(loft) * mGC.clubHeadVelocity, sinf(loft) * mGC.clubHeadVelocity, 0.f}; // relative velocity club/ball
+		XMVECTOR v_r = { -mGC.clubHeadVelocity, 0.f, 0.f }; // relative velocity club/ball
+		//XMVECTOR v_r = { cosf(loft) * mGC.clubHeadVelocity, sinf(loft) * mGC.clubHeadVelocity, 0.f}; // relative velocity club/ball
 		
 		float E = mGC.collisionKoefficient; // coefficient of restitution
 		float m1 = mGC.clubHeadMass;
@@ -338,7 +338,7 @@ void Logic::TestP117()
 		float I2 = m1 * mGC.ballRadius * mGC.ballRadius * 2.f / 5; // ball Moment of Inertia
 
 		// calculate impulse
-		float numerator = -(dotP(v_r, N) * (E + 1));
+		float numerator = -dotP(v_r, N) * (E + 1);
 		float denom1 = 1 / m1 + 1 / m2;
 		float denom2 = dotP(N, crossP(vDiv(crossP(r1, N), I1), r1));
 		float denom3 = dotP(N, crossP(vDiv(crossP(r2, N), I2), r2));
@@ -346,20 +346,20 @@ void Logic::TestP117()
 
 		float impactForce = impulse / mGC.collisionDuration;
 		auto nIF = XMVectorScale(N, impactForce); // normal impact force
-		float u = (sinf(loft) * -impactForce * mGC.frictionClubBall) / impactForce; // ratio tangential friction to normal force
+		
+		float u = mGC.frictionClubBall / impulse; // ratio tangential friction to normal force
 		XMVECTOR T = { sinf(loft), -cosf(loft), 0.f }; // unit tangent vector
-		XMVECTOR Tbook = crossP(crossP(N, v_r), N);
-		Tbook = XMVector3Normalize(Tbook);
+		//XMVECTOR T = XMVector3Normalize(crossP(crossP(N, v_r), N));
 
-		vClubBook = XMVectorAdd(v_r, vDiv(XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse)), m1));
-		vBallBook = vDiv(XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse)), m2);
+		vClubBook = XMVectorAdd({ mGC.clubHeadVelocity, 0.f, 0.f }, vDiv(XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse)), m1));
+		vBallBook = vDiv(XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse)), m2);
 
 		// system moment of inertia
 		float I_cg = I1 + m1 * mGC.clubCogDist * mGC.clubCogDist + I2 + m2 * mGC.ballRadius * mGC.ballRadius;
 		
 
-		wClub = vDiv(crossP(r1, XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse))), I_cg);
-		wBall = vDiv(crossP(r2, XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse))), I_cg);
+		wClub = vDiv(crossP(r1, XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse))), I_cg);
+		wBall = vDiv(crossP(r2, XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse))), I_cg);
 	}
 
 	XMVECTOR vBallFormula;
@@ -405,7 +405,7 @@ void Logic::BallControl()
 			ImGui::SliderFloat("club velocity(m/s)", &mGC.clubHeadVelocity, 1.f, 75.f, "%.1f");
 			ImGui::SliderFloat("collisionKoefficient", &mGC.collisionKoefficient, 0.1f, 1.f, "%.2f");
 			ImGui::SliderFloat("ground friction", &mGC.frictionGround, 0.05f, 1.f, "%.2f");
-			ImGui::SliderFloat("frictionCoefficient", &mGC.frictionClubBall, 0.3f, .8f, "%.2f");
+			ImGui::SliderFloat("frictionCoefficient", &mGC.frictionClubBall, 0.01f, .6f, "%.2f");
 			ImGui::SliderFloat("collisionDuration", &mGC.collisionDuration, 0.001f, .01f, "%.3f");
 			ImGui::SliderFloat("clubMOI(kg/m^2)", &mGC.clubMOI, .0001f, .0008f, "%.5f");
 
