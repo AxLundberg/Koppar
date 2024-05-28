@@ -303,6 +303,18 @@ float Logic::GolfLaunchVelocity(bool twoPiece)
 
 	return velocity;
 }
+
+DirectX::XMVECTOR GetTriangleCoG(DirectX::XMVECTOR p1, DirectX::XMVECTOR p2)
+{
+	using namespace DirectX;
+	// Calculate the center of gravity (CoG) of the triangle using the formula:
+	// CoG = (p0 + p1 + p2) / 3
+	XMVECTOR p0 = XMVectorZero(); // Assuming p0 is at the origin
+	XMVECTOR CoG = XMVectorScale(XMVectorAdd(XMVectorAdd(p0, p1), p2), 1.0f / 3.0f);
+
+	return CoG;
+}
+
 void Logic::TestP117()
 {
 	using namespace DirectX;
@@ -331,11 +343,45 @@ void Logic::TestP117()
 		float E = mGC.collisionKoefficient; // coefficient of restitution
 		float m1 = mGC.clubHeadMass;
 		float m2 = mGC.ballMass;
-		XMVECTOR r1 = { cosf(deg_rad(mGC.clubCogAngle)) * mGC.clubCogDist, sinf(deg_rad(mGC.clubCogAngle)) * mGC.clubCogDist, 0.f };; // vector from club center of gravity to impact
-		//XMVECTOR r1 = XMLoadFloat3(&mGC.clubCoGtoImpact); // vector from club center of gravity to impact
-		XMVECTOR r2 = { -cosf(loft) * mGC.ballRadius, -sinf(loft)*mGC.ballRadius, 0.f }; // vector from ball center of gravity to impact
+		float m_tot = m1 + m2;
+
+		XMVECTOR r1 = { cosf(deg_rad(mGC.clubCogAngle)) * mGC.clubCogDist, sinf(deg_rad(mGC.clubCogAngle)) * mGC.clubCogDist, 0.f };; // vector from club center of gravity to point of impact
+		XMVECTOR r2 = { -cosf(loft) * mGC.ballRadius, -sinf(loft)*mGC.ballRadius, 0.f }; // vector from ball center of gravity to point of impact
+		
+		// calculate center of gravity and vectors from club/ball cog to system cog
+		float I_tot = 0.f;
+		XMVECTOR cog = {}, clubToCoG = {}, ballToCog = {};
+		{
+			/* some simplifications here:
+			* Z-dim not considered
+			* club head is considered a right triangle with hypotenuse being the surface of the club head
+			* origin is at base of the club head triangle
+			* so, the club head triangle will have three points, height (0,y), base(0,0) and length (hypotenuse*sin(loft), 0)
+			* point of impact between club and ball will be half way up the hypotenuse
+			*/
+			float headHeight = 5.f;
+			float hypotenuse = headHeight / cosf(loft);
+			XMVECTOR clubCoG = GetTriangleCoG({0.f, headHeight, 0.f}, {hypotenuse * sinf(loft), 0.f, 0.f});
+			XMVECTOR ballCoG = {(hypotenuse/2)*sinf(loft) + mGC.ballRadius * cosf(loft), headHeight - (hypotenuse / 2) * cosf(loft) + mGC.ballRadius * sinf(loft), 0.f };
+			auto x_cg = (m1 * XMVectorGetX(clubCoG) + m2 * XMVectorGetX(ballCoG)) / (m1 + m2);
+			auto y_cg = (m1 * XMVectorGetY(clubCoG) + m2 * XMVectorGetY(ballCoG)) / (m1 + m2);
+			cog = { x_cg, y_cg, 0.f };
+			// distances from ball/club to CoG
+			XMVECTOR ballVtoCog = XMVectorSubtract(cog, ballCoG);
+			auto ballDistToCoG = XMVectorGetX(XMVector3Length(ballVtoCog));
+			XMVECTOR clubVtoCog = XMVectorSubtract(cog, clubCoG);
+			auto clubDistToCoG = XMVectorGetX(XMVector3Length(clubVtoCog));
+			// MoI of ball/club in system
+			float I_b = m1 * mGC.ballRadius * mGC.ballRadius * 2.f / 3.0f; // ball Moment of Inertia
+			auto I_bcg = I_b + mGC.ballMass * ballDistToCoG * ballDistToCoG;
+			float I_c = mGC.clubMOI;
+			auto I_ccg = I_b + mGC.clubHeadMass * clubDistToCoG * clubDistToCoG;
+			I_tot = I_bcg + I_ccg;
+			I_tot = I_tot - (x_cg * x_cg + y_cg * y_cg) - (m1 + m2);
+			auto stp = 0;
+		}
 		float I1 = mGC.clubMOI;
-		float I2 = m1 * mGC.ballRadius * mGC.ballRadius * 2.f / 5; // ball Moment of Inertia
+		float I2 = m1 * mGC.ballRadius * mGC.ballRadius * 2.f / 5.0f; // ball Moment of Inertia
 
 		// calculate impulse
 		float numerator = -dotP(v_r, N) * (E + 1);
@@ -347,7 +393,7 @@ void Logic::TestP117()
 		float impactForce = impulse / mGC.collisionDuration;
 		auto nIF = XMVectorScale(N, impactForce); // normal impact force
 		
-		float u = mGC.frictionClubBall / impulse; // ratio tangential friction to normal force
+		float u = mGC.frictionClubBall; // ratio tangential friction to normal force WRONG?
 		XMVECTOR T = { sinf(loft), -cosf(loft), 0.f }; // unit tangent vector
 		//XMVECTOR T = XMVector3Normalize(crossP(crossP(N, v_r), N));
 
@@ -357,7 +403,6 @@ void Logic::TestP117()
 		// system moment of inertia
 		float I_cg = I1 + m1 * mGC.clubCogDist * mGC.clubCogDist + I2 + m2 * mGC.ballRadius * mGC.ballRadius;
 		
-
 		wClub = vDiv(crossP(r1, XMVectorAdd(XMVectorScale(N, -impulse), XMVectorScale(T, u * impulse))), I_cg);
 		wBall = vDiv(crossP(r2, XMVectorAdd(XMVectorScale(N, impulse), XMVectorScale(T, u * impulse))), I_cg);
 	}
@@ -373,12 +418,32 @@ void Logic::TestP117()
 		vBallFormula = XMVectorAdd(XMVectorScale(e_p, v_p), XMVectorScale(e_n, v_n));
 	}
 
+	XMVECTOR vBallPaper;
+	float wBallPaper;
+	{
+		float m_c = mGC.clubHeadMass;
+		float m_b = mGC.ballMass;
+		float v_ci = mGC.clubHeadVelocity;
+		float radius = mGC.ballRadius;
+		float E = mGC.collisionKoefficient;
+		float I_b = (2.f / 5.f) * m_b * radius * radius;
+
+		float v_bfn = (1 + E) * v_ci * cosf(loft) / (1 + m_b / m_c);
+		float v_bfp = -v_ci * sinf(loft) / (1 + (m_b / m_c) + (m_b * radius * radius) / I_b);
+		float v_bo = sqrtf(v_bfn * v_bfn + v_bfp * v_bfp);
+		float launchAngle = loft + atanf(v_bfp / v_bfn);
+		wBallPaper = -m_b * v_bfp * radius / I_b;
+		vBallPaper = { cosf(launchAngle) * v_bo, sinf(launchAngle) * v_bo, 0.0f };
+	}
+
 	float velocityBook = GetVelocity(vBallBook);
 	float velocityFormula = GetVelocity(vBallFormula);
+	float velocityPaper = GetVelocity(vBallPaper); // 45.7548904 m/s
 	auto w1 = wClub;
 	auto w2 = wBall;
-	auto rpm = XMVectorGetZ(wBall) * 60.f / 2 * PI;
-	mGC.ballRPM = rpm;
+	auto rpm = (XMVectorGetZ(wBall) * 60.f) / (2 * PI);
+	auto rpmPaper = (wBallPaper * 60.f) / (2 * PI);
+	mGC.ballRPM = rpmPaper;
 	XMStoreFloat3(&mGC.ballVelocity, vBallBook);
 	XMStoreFloat3(&mGC.ballVelocityFormula, vBallFormula);
 }
